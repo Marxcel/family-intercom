@@ -110,7 +110,7 @@ class FamilyIntercomPanel extends HTMLElement {
             <h2>Send history</h2>
             <div class="history-list" id="historyList"></div>
             <h2>Available now</h2>
-            <div class="mini">This list updates whenever Home Assistant device states change. Devices stay visible even when idle, off, or unavailable.</div>
+            <div class="mini">This list updates whenever Home Assistant device states change. Idle, off, standby, paused, and playing devices stay visible; unavailable or unknown devices are hidden.</div>
             <div class="device-list" id="deviceList"></div>
           </aside>
         </div>
@@ -135,7 +135,7 @@ class FamilyIntercomPanel extends HTMLElement {
   _players() {
     if (!this._hass) return [];
     return Object.entries(this._hass.states)
-      .filter(([entityId]) => entityId.startsWith("media_player."))
+      .filter(([entityId, state]) => entityId.startsWith("media_player.") && !["unavailable", "unknown"].includes(state.state))
       .map(([entityId, state]) => ({
         entityId,
         name: state.attributes.friendly_name || entityId.replace("media_player.", "").replaceAll("_", " "),
@@ -196,7 +196,7 @@ class FamilyIntercomPanel extends HTMLElement {
   _presets(players) {
     const text = player => `${player.entityId} ${player.name}`.toLowerCase();
     const presets = [
-      ["All devices", players],
+      ["All available", players],
       ["Displays", players.filter(player => this._rank(player) === 0)],
       ["Speakers", players.filter(player => this._rank(player) === 1)],
       ["TVs", players.filter(player => this._rank(player) === 2)],

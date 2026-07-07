@@ -9,13 +9,14 @@ It can:
 - Delete temporary voice clips automatically after playback.
 - Register a Home Assistant sidebar panel without creating loose helpers or scripts.
 - Detect Home Assistant media players every time the panel updates.
-- Keep devices visible even when they are idle, off, standby, unknown, or unavailable, with the current state shown in the device list.
-- Target one device, all devices, or smart room presets such as displays, speakers, TVs, groups, kitchen, living room, bedrooms, office, and garage.
+- Keep controllable devices visible when they are idle, off, standby, paused, or playing.
+- Hide devices Home Assistant marks as `unavailable` or `unknown`.
+- Target one device, all available devices, or smart room presets such as displays, speakers, TVs, groups, kitchen, living room, bedrooms, office, and garage.
 - Play an optional chime before announcements.
 - Optionally set announcement volume and restore the previous volume afterward.
 - Keep a local send history in the browser for quick repeats.
 - Use mobile push-to-talk by holding the microphone button and releasing to send.
-- Send an emergency broadcast to every media player Home Assistant currently exposes.
+- Send an emergency broadcast to every currently available media player.
 - Respect quiet hours for normal messages while allowing emergency broadcasts.
 - Show per-room quick messages based on the selected target.
 - Switch to a larger display mode for Google/Nest displays and wall tablets.
@@ -56,9 +57,10 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 
 ## Device detection
 
-Family Intercom does not use a fixed device list. It reads Home Assistant state live and shows `media_player` entities.
+Family Intercom does not use a fixed device list. It reads Home Assistant state live and shows controllable `media_player` entities.
 
-- If a Google display, speaker group, TV, or other media player becomes unavailable, it stays visible with its current state.
+- Devices with states like `off`, `idle`, `standby`, `paused`, and `playing` stay visible because Home Assistant can usually still send media to them.
+- If a Google display, speaker group, TV, or other media player becomes `unavailable` or `unknown`, it is hidden until Home Assistant can see it again.
 - If a new media player is added later, it appears automatically after Home Assistant exposes it as a `media_player`.
 - The panel prioritizes displays/hubs, speakers, TVs, and groups near the top of the target list.
 
