@@ -48,6 +48,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 
 ## Features
 
+- **Versioned frontend asset:** The panel uses a versioned JavaScript file so Home Assistant and browser caches pick up new UI releases reliably.
 - **Room presets:** The panel builds presets from live Home Assistant `media_player` names and entity IDs. No fixed room list is stored.
 - **Chime:** A short generated WAV chime can play before messages. This is enabled by default.
 - **Volume handling:** Optional temporary volume control lets you set the target volume before playback and restore previous volume after a delay.
