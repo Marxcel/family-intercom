@@ -67,15 +67,31 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Reply view casting:** Optionally calls `cast.show_lovelace_view` after a message so a Google/Nest display can show a reply dashboard.
 - **Cast card resource registration:** The integration registers its Lovelace card resource so Google/Nest Cast receivers can load the reply dashboard instead of showing a blank/dark screen.
 - **Reply-to-sender mode:** When a browser, phone, or tablet sends an intercom message, the casted reply view can send typed replies back to that original open browser session.
+- **Voice-command reply switches:** If a Google/Nest display does not pass touch events to the casted dashboard, expose the Intercom Reply switches to Google Assistant and reply by voice.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
 ## Experimental reply view on Google/Nest displays
 
-Google/Nest display microphones and keyboards are not reliably exposed to Home Assistant Cast dashboards, so voice reply and typed free-form reply from the display usually will not work. One-tap reply buttons are the reliable path.
+Google/Nest display microphones, keyboards, and touch events are not reliably exposed to Home Assistant Cast dashboards. Some displays allow touch, but others behave as display-only. Family Intercom therefore also creates voice-friendly reply switches.
 
 Family Intercom can automatically cast a Lovelace view after a message is sent to a display-like target. This lets the display show big reply buttons or a Family Intercom card.
 
-When the reply view is opened by Family Intercom, it uses the most recent sender session as the return path. Keep the original phone/tablet/browser Family Intercom page open if you want it to receive the reply. Typed replies are sent back through Home Assistant events and spoken by the original browser when the browser allows speech playback.
+When the reply view is opened by Family Intercom, it uses the most recent sender session as the return path. Keep the original phone/tablet/browser Family Intercom page open if you want it to receive the reply. Replies are sent back through Home Assistant events and spoken by the original browser when the browser allows speech playback.
+
+If the Google display does not react to touch, expose these entities to Google Assistant/Home Assistant Cloud and use voice:
+
+- `switch.intercom_reply_yes`
+- `switch.intercom_reply_no`
+- `switch.intercom_reply_okay`
+- `switch.intercom_reply_coming`
+- `switch.intercom_reply_need_help`
+- `switch.intercom_reply_call_me`
+
+Example phrase:
+
+```text
+Hey Google, turn on Intercom Reply Yes
+```
 
 Recommended setup:
 
@@ -118,10 +134,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.5.4 or newer, the module path is:
+For version 0.5.5 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v9.js?v=0.5.4
+/family_intercom_static/family-intercom-panel-v10.js?v=0.5.5
 ```
 
 Manual service:
@@ -157,7 +173,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v9.js?v=0.5.4
+/family_intercom_static/family-intercom-panel-v10.js?v=0.5.5
 ```
 
 3. Add a manual card to any dashboard:

@@ -48,7 +48,7 @@ from .media import FamilyIntercomChimeView, FamilyIntercomMediaView, FamilyInter
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = []
+PLATFORMS: list[str] = ["switch"]
 
 SERVICE_SPEAK_TEXT = "speak_text"
 SERVICE_PLAY_RECORDING = "play_recording"
@@ -110,6 +110,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     entry.async_on_unload(_register_services(hass, entry))
     options = _entry_options(entry)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(await _register_frontend(hass, options["show_sidebar"]))
     entry.async_on_unload(_schedule_lovelace_resource_registration(hass))
     return True
@@ -127,7 +128,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         frontend.async_remove_panel(hass, PANEL_URL_PATH)
     except Exception:  # noqa: BLE001 - Home Assistant versions differ here.
         _LOGGER.debug("Could not remove Family Intercom panel during unload", exc_info=True)
-    return True
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 def _register_services(hass: HomeAssistant, entry: ConfigEntry):
