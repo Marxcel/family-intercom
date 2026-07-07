@@ -16,9 +16,9 @@
           "quiet_start": "Quiet hours start",
           "quiet_end": "Quiet hours end",
           "auto_reply_view_enabled": "Auto-cast reply view after messages",
-          "reply_dashboard_path": "Reply dashboard path",
+          "reply_dashboard_path": "Reply dashboard URL path",
           "reply_view_path": "Reply view path",
-          "reply_cast_delay_seconds": "Seconds before showing reply view"
+          "reply_cast_delay_seconds": "Seconds to wait before showing reply view"
         }
       }
     },
@@ -46,9 +46,9 @@
           "quiet_start": "Quiet hours start",
           "quiet_end": "Quiet hours end",
           "auto_reply_view_enabled": "Auto-cast reply view after messages",
-          "reply_dashboard_path": "Reply dashboard path",
+          "reply_dashboard_path": "Reply dashboard URL path",
           "reply_view_path": "Reply view path",
-          "reply_cast_delay_seconds": "Seconds before showing reply view"
+          "reply_cast_delay_seconds": "Seconds to wait before showing reply view"
         }
       }
     },

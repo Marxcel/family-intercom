@@ -92,8 +92,19 @@ Use `default_target` for the speaker/display where replies should be sent. For e
 
 3. Open **Settings > Devices & services > Family Intercom > Configure**.
 4. Enable **Auto-cast reply view after messages**.
-5. Keep the default dashboard path as `lovelace` unless your dashboard URL uses another path.
+5. Set the dashboard path to the first part of your dashboard URL. For example:
+
+```text
+56-hunt-rd
+```
+
+If your reply view URL is `/56-hunt-rd/family-intercom-reply`, then:
+
+- Dashboard path: `56-hunt-rd`
+- View path: `family-intercom-reply`
+
 6. Set the reply view path to `family-intercom-reply`.
+7. Use a reply delay of at least 20 seconds while testing, so the voice recording or TTS has time to play before the display changes to the reply screen.
 
 Manual service:
 
@@ -102,7 +113,7 @@ Manual service:
 Fields:
 
 - `target_entity`: Google/Nest display or cast target.
-- `dashboard_path`: usually `lovelace`.
+- `dashboard_path`: dashboard URL path, for example `lovelace` or `56-hunt-rd`.
 - `view_path`: usually `family-intercom-reply`.
 
 ## Device detection

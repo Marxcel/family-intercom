@@ -384,7 +384,7 @@ async def _maybe_show_reply_view(
         return
 
     async def show_later() -> None:
-        await asyncio.sleep(max(0, min(options["reply_cast_delay_seconds"], 30)))
+        await asyncio.sleep(max(10, min(options["reply_cast_delay_seconds"], 180)))
         await _show_reply_view(
             hass,
             display_targets,
