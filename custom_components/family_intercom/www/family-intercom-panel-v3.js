@@ -16,14 +16,17 @@ class FamilyIntercomPanel extends HTMLElement {
     this._displayMode = localStorage.getItem("familyIntercomDisplayMode") === "1";
     this.innerHTML = `
       <style>
-        :host{display:block;min-height:100%;box-sizing:border-box;padding:clamp(14px,3vw,28px);--fi-blue:#4f8cff;--fi-cyan:#23d5d5;--fi-purple:#9b5cff;--fi-pink:#ff4f9a;--fi-orange:#ffb347;--fi-red:#ef4444;--fi-green:#4ade80}
-        .wrap{max-width:1160px;margin:0 auto;display:grid;gap:18px}
+        :host{display:block;min-height:100%;box-sizing:border-box;padding:clamp(14px,3vw,28px);--fi-blue:#4f8cff;--fi-cyan:#23d5d5;--fi-purple:#9b5cff;--fi-pink:#ff4f9a;--fi-orange:#ffb347;--fi-red:#ef4444;--fi-green:#4ade80;--fi-dark:#101827}
+        .wrap{max-width:1240px;margin:0 auto;display:grid;gap:18px}
         .hero{position:relative;overflow:hidden;border-radius:28px;padding:26px;color:white;background:linear-gradient(135deg,var(--fi-blue),var(--fi-purple) 52%,var(--fi-pink));box-shadow:0 18px 50px rgba(79,140,255,.28)}
         .hero:before{content:"";position:absolute;inset:-60px -80px auto auto;width:260px;height:260px;border-radius:999px;background:rgba(255,255,255,.18)}
         .hero:after{content:"";position:absolute;inset:auto auto -80px -50px;width:220px;height:220px;border-radius:999px;background:rgba(35,213,213,.18)}
         .hero-content{position:relative;z-index:1;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
         .eyebrow{margin:0 0 6px;text-transform:uppercase;letter-spacing:.16em;font-size:.76rem;font-weight:900;opacity:.78}
+        .hero-actions{display:grid;gap:10px;justify-items:end}
         .device-pill{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:999px;background:rgba(12,18,32,.34);backdrop-filter:blur(16px);font-weight:800;white-space:nowrap}
+        .hero-stat{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;min-width:230px;padding:14px;border-radius:20px;background:rgba(12,18,32,.26);backdrop-filter:blur(16px);font-size:.88rem}
+        .hero-stat strong{font-size:1.08rem}
         .pulse-dot{width:10px;height:10px;border-radius:99px;background:var(--fi-green);box-shadow:0 0 0 7px rgba(74,222,128,.18)}
         .layout{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(300px,.72fr);gap:18px}
         .card{position:relative;overflow:hidden;background:var(--ha-card-background,var(--card-background-color,#fff));border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 40%);border-radius:24px;box-shadow:var(--ha-card-box-shadow,0 10px 30px rgba(0,0,0,.10));padding:18px;display:grid;gap:14px}
@@ -31,8 +34,8 @@ class FamilyIntercomPanel extends HTMLElement {
         h1,h2,h3,p{margin:0} h1{font-size:clamp(2rem,5vw,4rem);line-height:.98;letter-spacing:-.05em} h2{font-size:1.12rem}
         .hero p{max-width:680px;margin-top:12px;font-size:1.05rem;opacity:.9}
         label{display:grid;gap:6px;font-weight:600}
-        select,textarea{width:100%;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 25%);border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#111);padding:14px;font:inherit;outline:none}
-        select:focus,textarea:focus{border-color:var(--fi-blue);box-shadow:0 0 0 4px rgba(79,140,255,.16)}
+        select,textarea,input{width:100%;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 25%);border-radius:16px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#111);padding:14px;font:inherit;outline:none}
+        select:focus,textarea:focus,input:focus{border-color:var(--fi-blue);box-shadow:0 0 0 4px rgba(79,140,255,.16)}
         textarea{min-height:116px;resize:vertical}
         button{border:0;border-radius:18px;background:linear-gradient(135deg,var(--fi-blue),var(--fi-purple));color:white;font:inherit;font-weight:900;padding:15px;cursor:pointer;box-shadow:0 10px 24px rgba(79,140,255,.2);transition:transform .16s ease,filter .16s ease,opacity .16s ease}
         button:hover{transform:translateY(-1px);filter:saturate(1.08)} button:active{transform:translateY(0) scale(.99)}
@@ -50,17 +53,26 @@ class FamilyIntercomPanel extends HTMLElement {
         .chip{display:flex;align-items:center;gap:8px;min-width:max-content;padding:10px 12px;border-radius:999px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-blue) 10%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 35%);box-shadow:none;color:var(--primary-text-color,#111)}
         .chip.active{background:linear-gradient(135deg,var(--fi-blue),var(--fi-cyan));color:white}
         .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .message-actions{display:grid;grid-template-columns:1fr auto;gap:10px}
+        .message-actions button{min-width:170px}
+        .composer-card{border-radius:22px;padding:14px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-cyan) 5%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 55%);display:grid;gap:10px}
         .device-list,.history-list{display:grid;gap:8px;max-height:390px;overflow:auto;padding-right:4px}
-        .device{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:12px;border-radius:17px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-purple) 5%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 45%)}
+        .device{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:12px;border-radius:17px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-purple) 5%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 45%);cursor:pointer}
+        .device:hover{border-color:color-mix(in srgb,var(--fi-blue),transparent 25%);transform:translateY(-1px)}
         .device-icon{width:38px;height:38px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(135deg,var(--fi-blue),var(--fi-purple));color:white;font-size:.78rem;font-weight:900}
         .device-name{font-weight:900}.device-state{text-transform:capitalize;font-size:.78rem;color:var(--secondary-text-color,#666)}
         .badge{font-size:.72rem;font-weight:900;padding:5px 8px;border-radius:999px;background:rgba(74,222,128,.14);color:color-mix(in srgb,var(--fi-green),var(--primary-text-color,#111) 25%)}
+        .favorite{padding:8px 10px;border-radius:999px;background:transparent;color:var(--secondary-text-color,#666);box-shadow:none;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 50%)}
+        .favorite.active{background:linear-gradient(135deg,#f59e0b,#f97316);color:white;border-color:transparent}
+        .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+        .tiny{font-size:.76rem;color:var(--secondary-text-color,#666);font-weight:800}
+        .inline-form{display:grid;grid-template-columns:1fr auto;gap:8px}
         .history-item{padding:11px;border-radius:15px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-cyan) 5%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 55%)}
         .history-message{font-weight:900}.history-meta{font-size:.78rem;color:var(--secondary-text-color,#666);margin-top:3px}
         .record-pad{display:grid;gap:12px;place-items:center;text-align:center;padding:18px;border-radius:24px;background:radial-gradient(circle at 50% 0,rgba(255,79,154,.22),transparent 45%),color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-pink) 5%)}
         .record-circle{width:132px;height:132px;border-radius:999px;font-size:2.8rem;display:grid;place-items:center;background:linear-gradient(135deg,var(--fi-pink),var(--fi-orange));box-shadow:0 18px 38px rgba(255,79,154,.28);touch-action:none}
         .recording{animation:pulse 1s infinite;background:linear-gradient(135deg,#ef4444,#ff4f9a)!important}
-        .display-mode .hero,.display-mode aside .device-list,.display-mode .history-list{display:none}
+        .display-mode .hero,.display-mode aside .device-list,.display-mode .history-list,.display-mode #deviceSearch{display:none}
         .display-mode .layout{grid-template-columns:1fr}.display-mode .grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
         .display-mode button{font-size:1.18rem;padding:20px}.display-mode .record-circle{width:170px;height:170px;font-size:3.4rem}
         @keyframes pulse{50%{transform:scale(1.035);box-shadow:0 0 0 14px rgba(239,68,68,.14),0 18px 38px rgba(255,79,154,.28)}}
@@ -74,16 +86,27 @@ class FamilyIntercomPanel extends HTMLElement {
               <h1>Family Intercom</h1>
               <p>Speak typed messages or record your voice from a phone, tablet, browser, or Google display and play it on any speaker, display, TV, or media player Home Assistant knows about.</p>
             </div>
-            <div class="device-pill"><span class="pulse-dot"></span><span id="deviceCount">Detecting devices</span></div>
+            <div class="hero-actions">
+              <div class="device-pill"><span class="pulse-dot"></span><span id="deviceCount">Detecting devices</span></div>
+              <div class="hero-stat">
+                <span>Target</span><strong id="heroTarget">None selected</strong>
+                <span>Last sent</span><strong id="heroLastSent">Not yet</strong>
+              </div>
+            </div>
           </div>
         </section>
         <div class="layout">
           <main class="card soft">
-            <h2>Send to</h2>
+            <div class="section-head">
+              <h2>Send to</h2>
+              <span class="tiny" id="selectedCount">0 selected</span>
+            </div>
             <div class="target-row">
               <select id="target"></select>
               <button id="refresh" class="secondary" title="Refresh devices">&#8635;</button>
             </div>
+            <div class="mini">Favorites</div>
+            <div class="chips" id="favoriteChips"></div>
             <div class="mini">Room presets</div>
             <div class="chips" id="presetChips"></div>
             <div class="mini">Individual devices</div>
@@ -93,10 +116,15 @@ class FamilyIntercomPanel extends HTMLElement {
               <button id="emergency" class="emergency">Emergency broadcast</button>
             </div>
             <div class="status" id="status">Select a speaker or display, then type or hold the microphone.</div>
-            <label>Type a message
-              <textarea id="message" placeholder="Example: Dinner is ready."></textarea>
-            </label>
-            <button id="sendText" class="green">Speak typed message</button>
+            <div class="composer-card">
+              <label>Type a message
+                <textarea id="message" placeholder="Example: Dinner is ready."></textarea>
+              </label>
+              <div class="message-actions">
+                <button id="sendText" class="green">Speak typed message</button>
+                <button id="saveQuick" class="secondary" title="Save this as a custom quick message">Save quick</button>
+              </div>
+            </div>
             <div class="record-pad">
               <button id="record" class="record-circle" title="Hold to record voice">Mic</button>
               <h2 id="recordTitle">Hold to talk</h2>
@@ -105,23 +133,39 @@ class FamilyIntercomPanel extends HTMLElement {
             </div>
           </main>
           <aside class="card">
-            <h2>Quick messages</h2>
+            <div class="section-head">
+              <h2>Quick messages</h2>
+              <button id="clearCustomQuick" class="secondary" title="Clear custom quick messages">Clear custom</button>
+            </div>
             <div class="grid" id="quick"></div>
-            <h2>Send history</h2>
+            <div class="inline-form">
+              <input id="customQuick" placeholder="Add custom quick message">
+              <button id="addCustomQuick" class="secondary">Add</button>
+            </div>
+            <div class="section-head">
+              <h2>Send history</h2>
+              <button id="clearHistory" class="secondary" title="Clear send history">Clear</button>
+            </div>
             <div class="history-list" id="historyList"></div>
             <h2>Available now</h2>
             <div class="mini">This list updates whenever Home Assistant device states change. Idle, off, standby, paused, and playing devices stay visible; unavailable or unknown devices are hidden.</div>
+            <input id="deviceSearch" placeholder="Search devices, rooms, hubs, speakers">
             <div class="device-list" id="deviceList"></div>
           </aside>
         </div>
       </div>
     `;
     this.querySelector("#sendText").addEventListener("click", () => this._sendText());
+    this.querySelector("#saveQuick").addEventListener("click", () => this._saveTypedQuick());
     this.querySelector("#stop").addEventListener("click", () => this._stopRecording());
     this.querySelector("#refresh").addEventListener("click", () => this._updateTargets(true));
     this.querySelector("#target").addEventListener("change", () => this._saveTarget());
     this.querySelector("#emergency").addEventListener("click", () => this._sendEmergency());
     this.querySelector("#displayMode").addEventListener("click", () => this._toggleDisplayMode());
+    this.querySelector("#deviceSearch").addEventListener("input", () => this._renderDeviceList(this._players()));
+    this.querySelector("#addCustomQuick").addEventListener("click", () => this._addCustomQuick());
+    this.querySelector("#clearCustomQuick").addEventListener("click", () => this._clearCustomQuick());
+    this.querySelector("#clearHistory").addEventListener("click", () => this._clearHistory());
     const record = this.querySelector("#record");
     record.addEventListener("click", () => this._startRecording());
     record.addEventListener("pointerdown", event => this._startHoldRecording(event));
@@ -186,10 +230,12 @@ class FamilyIntercomPanel extends HTMLElement {
 
     const count = this.querySelector("#deviceCount");
     if (count) count.textContent = `${players.length} media player${players.length === 1 ? "" : "s"}`;
+    this._renderFavoriteChips(players);
     this._renderPresetChips(players);
     this._renderTargetChips(players);
     this._renderDeviceList(players);
     this._renderQuickMessages();
+    this._updateHero();
     if (!players.length) this._status("No media players found right now.");
   }
 
@@ -232,6 +278,28 @@ class FamilyIntercomPanel extends HTMLElement {
     }
   }
 
+  _renderFavoriteChips(players) {
+    const container = this.querySelector("#favoriteChips");
+    if (!container) return;
+    const favorites = this._favorites();
+    const favoritePlayers = players.filter(player => favorites.includes(player.entityId));
+    container.replaceChildren();
+    if (!favoritePlayers.length) {
+      const empty = document.createElement("span");
+      empty.className = "mini";
+      empty.textContent = "Tap the star next to a device to save it here.";
+      container.append(empty);
+      return;
+    }
+    for (const player of favoritePlayers) {
+      const button = document.createElement("button");
+      button.className = `chip${this._sameTargets(this._selectedTargets, [player.entityId]) ? " active" : ""}`;
+      button.textContent = `${player.icon} ${player.name}`;
+      button.addEventListener("click", () => this._selectPlayer(player, players));
+      container.append(button);
+    }
+  }
+
   _renderTargetChips(players) {
     const container = this.querySelector("#targetChips");
     if (!container) return;
@@ -255,22 +323,36 @@ class FamilyIntercomPanel extends HTMLElement {
   _renderDeviceList(players) {
     const container = this.querySelector("#deviceList");
     if (!container) return;
+    const query = (this.querySelector("#deviceSearch")?.value || "").trim().toLowerCase();
+    const favorites = this._favorites();
+    const visible = query
+      ? players.filter(player => `${player.name} ${player.entityId} ${player.state} ${player.icon}`.toLowerCase().includes(query))
+      : players;
     container.replaceChildren();
-    for (const player of players) {
+    if (!visible.length) {
+      const empty = document.createElement("div");
+      empty.className = "mini";
+      empty.textContent = query ? "No devices match that search." : "No available media players found.";
+      container.append(empty);
+      return;
+    }
+    for (const player of visible) {
       const row = document.createElement("div");
       row.className = "device";
       row.innerHTML = `
         <div class="device-icon">${this._escape(player.icon.slice(0, 2))}</div>
         <div><div class="device-name">${this._escape(player.name)}</div><div class="device-state">${this._escape(player.entityId)} - ${this._escape(player.state)}</div></div>
         <div class="badge">${this._escape(player.state)}</div>
+        <button class="favorite${favorites.includes(player.entityId) ? " active" : ""}" title="Favorite device">Star</button>
       `;
-      row.addEventListener("click", () => {
-        this.querySelector("#target").value = player.entityId;
-        this._selectedTargets = [player.entityId];
-        this._saveTarget();
-        this._renderPresetChips(players);
-        this._renderTargetChips(players);
-        this._renderQuickMessages();
+      row.addEventListener("click", event => {
+        if (event.target?.classList?.contains("favorite")) return;
+        this._selectPlayer(player, players);
+      });
+      row.querySelector(".favorite").addEventListener("click", () => {
+        this._toggleFavorite(player.entityId);
+        this._renderFavoriteChips(players);
+        this._renderDeviceList(players);
       });
       container.append(row);
     }
@@ -292,6 +374,7 @@ class FamilyIntercomPanel extends HTMLElement {
     if (label.includes("bedroom") || label.includes("kids")) quick.unshift(["Time for bed.", "pink"]);
     if (label.includes("garage")) quick.unshift(["Please close the garage.", "orange"]);
     if (label.includes("office")) quick.unshift(["Can you come to the office?", "green"]);
+    for (const message of this._customQuickMessages()) quick.push([message, "secondary"]);
     for (const [message, style] of quick) {
       const button = document.createElement("button");
       button.className = style || "secondary";
@@ -346,6 +429,94 @@ class FamilyIntercomPanel extends HTMLElement {
     });
     localStorage.setItem("familyIntercomHistory", JSON.stringify(history.slice(0, 12)));
     this._renderHistory();
+    this._updateHero();
+  }
+
+  _clearHistory() {
+    localStorage.removeItem("familyIntercomHistory");
+    this._renderHistory();
+    this._updateHero();
+    this._status("Send history cleared.");
+  }
+
+  _customQuickMessages() {
+    try {
+      return JSON.parse(localStorage.getItem("familyIntercomQuickMessages") || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  _saveCustomQuick(message) {
+    const clean = String(message || "").trim();
+    if (!clean) return false;
+    const messages = this._customQuickMessages().filter(item => item.toLowerCase() !== clean.toLowerCase());
+    messages.unshift(clean);
+    localStorage.setItem("familyIntercomQuickMessages", JSON.stringify(messages.slice(0, 10)));
+    this._renderQuickMessages();
+    return true;
+  }
+
+  _addCustomQuick() {
+    const input = this.querySelector("#customQuick");
+    if (!this._saveCustomQuick(input.value)) return this._status("Type a quick message first.");
+    input.value = "";
+    this._status("Custom quick message saved.");
+  }
+
+  _saveTypedQuick() {
+    const textarea = this.querySelector("#message");
+    if (!this._saveCustomQuick(textarea.value)) return this._status("Type a message first.");
+    this._status("Saved as a custom quick message.");
+  }
+
+  _clearCustomQuick() {
+    localStorage.removeItem("familyIntercomQuickMessages");
+    this._renderQuickMessages();
+    this._status("Custom quick messages cleared.");
+  }
+
+  _favorites() {
+    try {
+      return JSON.parse(localStorage.getItem("familyIntercomFavoriteTargets") || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  _toggleFavorite(entityId) {
+    const favorites = this._favorites();
+    const next = favorites.includes(entityId)
+      ? favorites.filter(item => item !== entityId)
+      : [entityId, ...favorites].slice(0, 12);
+    localStorage.setItem("familyIntercomFavoriteTargets", JSON.stringify(next));
+    this._status(next.includes(entityId) ? "Favorite saved." : "Favorite removed.");
+  }
+
+  _selectPlayer(player, players = this._players()) {
+    this.querySelector("#target").value = player.entityId;
+    this._selectedTargets = [player.entityId];
+    this._saveTarget();
+    this._rememberTarget(player.entityId);
+    this._renderFavoriteChips(players);
+    this._renderPresetChips(players);
+    this._renderTargetChips(players);
+    this._renderQuickMessages();
+    this._updateHero();
+  }
+
+  _rememberTarget(entityId) {
+    const recent = this._recentTargets().filter(item => item !== entityId);
+    recent.unshift(entityId);
+    localStorage.setItem("familyIntercomRecentTargets", JSON.stringify(recent.slice(0, 8)));
+  }
+
+  _recentTargets() {
+    try {
+      return JSON.parse(localStorage.getItem("familyIntercomRecentTargets") || "[]");
+    } catch {
+      return [];
+    }
   }
 
   _sameTargets(left = [], right = []) {
@@ -381,12 +552,34 @@ class FamilyIntercomPanel extends HTMLElement {
     if (target) {
       this._selectedTargets = [target];
       localStorage.setItem("familyIntercomTarget", target);
+      this._rememberTarget(target);
+      const players = this._players();
+      this._renderFavoriteChips(players);
+      this._renderPresetChips(players);
+      this._renderTargetChips(players);
+      this._renderQuickMessages();
+      this._updateHero();
     }
   }
 
   _status(text) {
     const status = this.querySelector("#status");
     if (status) status.textContent = text;
+  }
+
+  _updateHero() {
+    const heroTarget = this.querySelector("#heroTarget");
+    const heroLastSent = this.querySelector("#heroLastSent");
+    const selectedCount = this.querySelector("#selectedCount");
+    const targets = this._targets();
+    if (heroTarget) heroTarget.textContent = this._targetLabel(targets);
+    if (selectedCount) selectedCount.textContent = `${targets.length} selected`;
+    const latest = this._history()[0];
+    if (heroLastSent) {
+      heroLastSent.textContent = latest
+        ? `${latest.kind} ${new Date(latest.time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+        : "Not yet";
+    }
   }
 
   async _speak(message, emergency = false, targets = this._targets()) {
@@ -411,6 +604,13 @@ class FamilyIntercomPanel extends HTMLElement {
   async _sendEmergency() {
     const targets = this._players().map(player => player.entityId);
     if (!targets.length) return this._status("No media players found for emergency broadcast.");
+    const now = Date.now();
+    if (!this._emergencyConfirmUntil || now > this._emergencyConfirmUntil) {
+      this._emergencyConfirmUntil = now + 5000;
+      this._status(`Press Emergency broadcast again within 5 seconds to send to ${targets.length} devices.`);
+      return;
+    }
+    this._emergencyConfirmUntil = 0;
     await this._speak("Emergency. I need help please.", true, targets);
   }
 

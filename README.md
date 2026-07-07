@@ -21,6 +21,10 @@ It can:
 - Show per-room quick messages based on the selected target.
 - Switch to a larger display mode for Google/Nest displays and wall tablets.
 - Manage sidebar, chime, volume, cleanup, and quiet-hours settings from the integration options page.
+- Search media players by room, device name, entity ID, state, or type.
+- Save favorite targets for faster household announcements.
+- Save custom quick messages directly from the panel.
+- Require a second confirmation tap before emergency broadcasts.
 
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
@@ -50,8 +54,12 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Send history:** The last sent messages are stored in the browser's local storage, not in Home Assistant.
 - **Push-to-talk:** Hold the microphone button on a phone/tablet, then release to send. You can also tap once and use the Stop button.
 - **Emergency broadcast:** Sends a priority message to every currently available media player and bypasses quiet hours.
+- **Emergency confirmation:** The emergency button requires a second press within five seconds to prevent accidental whole-house announcements.
 - **Quiet hours:** Normal announcements can be blocked during configured times.
 - **Quick messages:** Buttons adapt to the selected room/device where possible.
+- **Custom quick messages:** Save common household phrases in the browser and reuse them without creating Home Assistant helpers.
+- **Favorites:** Star frequently used devices so they stay at the top of the intercom workflow.
+- **Device search:** Search the live media-player list when the home has many speakers, hubs, and groups.
 - **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
