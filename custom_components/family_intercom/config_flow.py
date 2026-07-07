@@ -53,12 +53,12 @@ class FamilyIntercomOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage options."""
         errors = {}
-        current = {**self.config_entry.data, **self.config_entry.options}
+        current = {**self._config_entry.data, **self._config_entry.options}
         if user_input is not None:
             if user_input.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS) < 15:
                 errors["cleanup_seconds"] = "cleanup_too_short"
