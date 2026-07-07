@@ -1,0 +1,55 @@
+speak_text:
+  name: Speak text
+  description: Speak a text message on a selected media player.
+  fields:
+    target_entity:
+      name: Target media player
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    message:
+      name: Message
+      required: true
+      selector:
+        text:
+          multiline: true
+    tts_entity:
+      name: TTS entity
+      required: false
+      selector:
+        entity:
+          domain: tts
+
+play_recording:
+  name: Play recording
+  description: Save a temporary base64 audio recording, play it on a media player, and delete it shortly after.
+  fields:
+    target_entity:
+      name: Target media player
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    data:
+      name: Base64 audio data
+      required: true
+      selector:
+        text:
+          multiline: true
+    content_type:
+      name: Content type
+      required: true
+      example: audio/webm
+      selector:
+        text:
+    filename:
+      name: Filename
+      required: false
+      example: intercom.webm
+      selector:
+        text:
+
+delete_temp_files:
+  name: Delete temporary files
+  description: Delete any temporary Family Intercom recordings immediately.

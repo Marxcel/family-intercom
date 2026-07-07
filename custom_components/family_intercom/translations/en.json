@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Family Intercom",
+        "description": "Set up a household intercom panel for Home Assistant.",
+        "data": {
+          "tts_entity": "Default TTS entity",
+          "cleanup_seconds": "Seconds to keep temporary recordings"
+        }
+      }
+    },
+    "error": {
+      "cleanup_too_short": "Use at least 15 seconds so cast devices have time to load the recording."
+    },
+    "abort": {
+      "already_configured": "Family Intercom is already configured."
+    }
+  }
+}

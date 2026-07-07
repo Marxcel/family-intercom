@@ -1,0 +1,6 @@
+{
+  "name": "Family Intercom",
+  "render_readme": true,
+  "domains": ["family_intercom"],
+  "homeassistant": "2026.7.0"
+}
