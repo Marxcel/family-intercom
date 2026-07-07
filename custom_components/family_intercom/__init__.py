@@ -39,6 +39,8 @@ from .const import (
     DEFAULT_VOLUME_ENABLED,
     DEFAULT_VOLUME_LEVEL,
     DOMAIN,
+    FRONTEND_MODULE,
+    INTEGRATION_VERSION,
     PANEL_URL_PATH,
     STATIC_URL,
 )
@@ -106,6 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(_register_services(hass, entry))
     options = _entry_options(entry)
     entry.async_on_unload(await _register_frontend(hass, options["show_sidebar"]))
+    entry.async_on_unload(_schedule_lovelace_resource_registration(hass))
     return True
 
 
@@ -455,7 +458,7 @@ async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
             config={
                 "_panel_custom": {
                     "name": "family-intercom-panel",
-                    "js_url": f"{STATIC_URL}/family-intercom-panel-v6.js",
+                    "js_url": f"{STATIC_URL}/{FRONTEND_MODULE}",
                     "embed_iframe": False,
                     "trust_external_script": False,
                 }
@@ -471,6 +474,66 @@ async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
             _LOGGER.debug("Could not remove Family Intercom panel", exc_info=True)
 
     return unregister
+
+
+def _schedule_lovelace_resource_registration(hass: HomeAssistant):
+    """Schedule Lovelace resource registration without blocking integration setup."""
+    task = hass.loop.create_task(_async_register_lovelace_resource(hass))
+
+    def unload() -> None:
+        if not task.done():
+            task.cancel()
+
+    return unload
+
+
+async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
+    """Register the Family Intercom card as a Lovelace module resource for Cast receivers.
+
+    The sidebar panel can load the JS directly, but Google Cast Lovelace receivers
+    need custom cards to be listed under Dashboard resources. Without that, the
+    cast target can open the dashboard route and still show a dark/blank screen.
+    """
+    resource_base = f"{STATIC_URL}/{FRONTEND_MODULE}"
+    resource_url = f"{resource_base}?v={INTEGRATION_VERSION}"
+    legacy_prefix = f"{STATIC_URL}/family-intercom-panel-"
+
+    try:
+        for _attempt in range(12):
+            lovelace = hass.data.get("lovelace")
+            resources = getattr(lovelace, "resources", None) if lovelace else None
+            if resources is not None:
+                mode = getattr(lovelace, "mode", getattr(lovelace, "resource_mode", "storage"))
+                if mode != "storage":
+                    _LOGGER.info(
+                        "Family Intercom Lovelace resource must be added manually in YAML mode: %s",
+                        resource_url,
+                    )
+                    return
+
+                if not getattr(resources, "loaded", True) and hasattr(resources, "async_load"):
+                    await resources.async_load()
+
+                for resource in resources.async_items():
+                    existing_url = str(resource.get("url", ""))
+                    existing_base = existing_url.split("?", 1)[0]
+                    if existing_base == resource_base and resource.get("res_type") == "module":
+                        if existing_url != resource_url:
+                            await resources.async_update_item(resource["id"], {"url": resource_url, "res_type": "module"})
+                        return
+                    if existing_base.startswith(legacy_prefix):
+                        await resources.async_update_item(resource["id"], {"url": resource_url, "res_type": "module"})
+                        return
+
+                await resources.async_create_item({"url": resource_url, "res_type": "module"})
+                return
+
+            await asyncio.sleep(5)
+        _LOGGER.debug("Family Intercom Lovelace resources were not ready; card resource was not auto-registered")
+    except asyncio.CancelledError:
+        raise
+    except Exception:  # noqa: BLE001 - Lovelace internals differ between HA versions.
+        _LOGGER.exception("Could not auto-register Family Intercom Lovelace card resource")
 
 
 def _schedule_delete(hass: HomeAssistant, recording_id: str, delay: int) -> None:

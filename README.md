@@ -65,6 +65,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Device search:** Search the live media-player list when the home has many speakers, hubs, and groups.
 - **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
 - **Reply view casting:** Optionally calls `cast.show_lovelace_view` after a message so a Google/Nest display can show a reply dashboard.
+- **Cast card resource registration:** The integration registers its Lovelace card resource so Google/Nest Cast receivers can load the reply dashboard instead of showing a blank/dark screen.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
 ## Experimental reply view on Google/Nest displays
@@ -106,6 +107,14 @@ If your reply view URL is `/56-hunt-rd/family-intercom-reply`, then:
 6. Set the reply view path to `family-intercom-reply`.
 7. Use a reply delay of at least 20 seconds while testing, so the voice recording or TTS has time to play before the display changes to the reply screen.
 
+Family Intercom normally registers its card resource automatically. If the display plays the message and then shows only a dark Cast screen, verify this resource exists in **Settings > Dashboards > Resources**:
+
+```text
+/family_intercom_static/family-intercom-panel-v7.js?v=0.5.2
+```
+
+Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
+
 Manual service:
 
 - `family_intercom.show_reply_view`
@@ -136,10 +145,10 @@ If you already use Mushroom, the optional Lovelace card can sit nicely inside a 
 If you want Family Intercom inside an existing dashboard view:
 
 1. Go to **Settings > Dashboards > Resources**.
-2. Add this JavaScript module:
+2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v6.js
+/family_intercom_static/family-intercom-panel-v7.js?v=0.5.2
 ```
 
 3. Add a manual card to any dashboard:
