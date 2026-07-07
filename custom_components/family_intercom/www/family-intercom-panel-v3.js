@@ -72,7 +72,7 @@ class FamilyIntercomPanel extends HTMLElement {
             <div>
               <p class="eyebrow">Home Assistant intercom</p>
               <h1>Family Intercom</h1>
-              <p>Speak typed messages or record your voice from a phone, tablet, browser, or Google display and play it on any currently available speaker, display, TV, or media player.</p>
+              <p>Speak typed messages or record your voice from a phone, tablet, browser, or Google display and play it on any speaker, display, TV, or media player Home Assistant knows about.</p>
             </div>
             <div class="device-pill"><span class="pulse-dot"></span><span id="deviceCount">Detecting devices</span></div>
           </div>
@@ -82,7 +82,7 @@ class FamilyIntercomPanel extends HTMLElement {
             <h2>Send to</h2>
             <div class="target-row">
               <select id="target"></select>
-              <button id="refresh" class="secondary" title="Refresh available devices">&#8635;</button>
+              <button id="refresh" class="secondary" title="Refresh devices">&#8635;</button>
             </div>
             <div class="mini">Room presets</div>
             <div class="chips" id="presetChips"></div>
@@ -110,7 +110,7 @@ class FamilyIntercomPanel extends HTMLElement {
             <h2>Send history</h2>
             <div class="history-list" id="historyList"></div>
             <h2>Available now</h2>
-            <div class="mini">This list updates whenever Home Assistant device states change. Unavailable devices are hidden automatically.</div>
+            <div class="mini">This list updates whenever Home Assistant device states change. Devices stay visible even when idle, off, or unavailable.</div>
             <div class="device-list" id="deviceList"></div>
           </aside>
         </div>
@@ -135,7 +135,7 @@ class FamilyIntercomPanel extends HTMLElement {
   _players() {
     if (!this._hass) return [];
     return Object.entries(this._hass.states)
-      .filter(([entityId, state]) => entityId.startsWith("media_player.") && state.state !== "unavailable")
+      .filter(([entityId]) => entityId.startsWith("media_player."))
       .map(([entityId, state]) => ({
         entityId,
         name: state.attributes.friendly_name || entityId.replace("media_player.", "").replaceAll("_", " "),
@@ -185,18 +185,18 @@ class FamilyIntercomPanel extends HTMLElement {
     this._saveTarget();
 
     const count = this.querySelector("#deviceCount");
-    if (count) count.textContent = `${players.length} available device${players.length === 1 ? "" : "s"}`;
+    if (count) count.textContent = `${players.length} media player${players.length === 1 ? "" : "s"}`;
     this._renderPresetChips(players);
     this._renderTargetChips(players);
     this._renderDeviceList(players);
     this._renderQuickMessages();
-    if (!players.length) this._status("No available media players found right now.");
+    if (!players.length) this._status("No media players found right now.");
   }
 
   _presets(players) {
     const text = player => `${player.entityId} ${player.name}`.toLowerCase();
     const presets = [
-      ["All available", players],
+      ["All devices", players],
       ["Displays", players.filter(player => this._rank(player) === 0)],
       ["Speakers", players.filter(player => this._rank(player) === 1)],
       ["TVs", players.filter(player => this._rank(player) === 2)],
@@ -262,7 +262,7 @@ class FamilyIntercomPanel extends HTMLElement {
       row.innerHTML = `
         <div class="device-icon">${this._escape(player.icon.slice(0, 2))}</div>
         <div><div class="device-name">${this._escape(player.name)}</div><div class="device-state">${this._escape(player.entityId)} - ${this._escape(player.state)}</div></div>
-        <div class="badge">available</div>
+        <div class="badge">${this._escape(player.state)}</div>
       `;
       row.addEventListener("click", () => {
         this.querySelector("#target").value = player.entityId;
@@ -410,7 +410,7 @@ class FamilyIntercomPanel extends HTMLElement {
 
   async _sendEmergency() {
     const targets = this._players().map(player => player.entityId);
-    if (!targets.length) return this._status("No available devices for emergency broadcast.");
+    if (!targets.length) return this._status("No media players found for emergency broadcast.");
     await this._speak("Emergency. I need help please.", true, targets);
   }
 
