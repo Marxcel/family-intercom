@@ -10,6 +10,16 @@ It can:
 - Register a Home Assistant sidebar panel without creating loose helpers or scripts.
 - Detect currently available Home Assistant media players every time the panel updates.
 - Hide unavailable devices automatically, so stale speakers/displays do not clutter the intercom.
+- Target one device, all available devices, or smart room presets such as displays, speakers, TVs, groups, kitchen, living room, bedrooms, office, and garage.
+- Play an optional chime before announcements.
+- Optionally set announcement volume and restore the previous volume afterward.
+- Keep a local send history in the browser for quick repeats.
+- Use mobile push-to-talk by holding the microphone button and releasing to send.
+- Send an emergency broadcast to every currently available media player.
+- Respect quiet hours for normal messages while allowing emergency broadcasts.
+- Show per-room quick messages based on the selected target.
+- Switch to a larger display mode for Google/Nest displays and wall tablets.
+- Manage sidebar, chime, volume, cleanup, and quiet-hours settings from the integration options page.
 
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
@@ -23,11 +33,26 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 After setup, open **Family Intercom** from the Home Assistant sidebar.
 
+To adjust behavior later, open **Settings > Devices & services > Family Intercom > Configure**.
+
 ## Recommended use
 
 The default install shows **Family Intercom** in the Home Assistant sidebar. This is recommended because intercom use needs more room than a small card: target picker, typed message, recording controls, quick messages, and a live list of available devices.
 
 During setup, you can disable the sidebar entry if you only want to use the integration services or an optional dashboard card.
+
+## Features
+
+- **Room presets:** The panel builds presets from live Home Assistant `media_player` names and entity IDs. No fixed room list is stored.
+- **Chime:** A short generated WAV chime can play before messages. This is enabled by default.
+- **Volume handling:** Optional temporary volume control lets you set the target volume before playback and restore previous volume after a delay.
+- **Send history:** The last sent messages are stored in the browser's local storage, not in Home Assistant.
+- **Push-to-talk:** Hold the microphone button on a phone/tablet, then release to send. You can also tap once and use the Stop button.
+- **Emergency broadcast:** Sends a priority message to every currently available media player and bypasses quiet hours.
+- **Quiet hours:** Normal announcements can be blocked during configured times.
+- **Quick messages:** Buttons adapt to the selected room/device where possible.
+- **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
+- **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
 ## Device detection
 
@@ -51,7 +76,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module:
 
 ```text
-/family_intercom_static/family-intercom-panel.js
+/family_intercom_static/family-intercom-panel-v3.js
 ```
 
 3. Add a manual card to any dashboard:

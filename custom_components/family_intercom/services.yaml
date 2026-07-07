@@ -20,6 +20,12 @@ speak_text:
       selector:
         entity:
           domain: tts
+    emergency:
+      name: Emergency
+      description: Bypass quiet hours for this announcement.
+      required: false
+      selector:
+        boolean:
 
 play_recording:
   name: Play recording
@@ -49,6 +55,12 @@ play_recording:
       example: intercom.webm
       selector:
         text:
+    emergency:
+      name: Emergency
+      description: Bypass quiet hours for this announcement.
+      required: false
+      selector:
+        boolean:
 
 delete_temp_files:
   name: Delete temporary files
