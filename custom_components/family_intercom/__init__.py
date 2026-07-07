@@ -24,11 +24,15 @@ from homeassistant.helpers.network import get_url
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    DEFAULT_AUTO_REPLY_VIEW_ENABLED,
     DEFAULT_CHIME_ENABLED,
     DEFAULT_CLEANUP_SECONDS,
     DEFAULT_QUIET_END,
     DEFAULT_QUIET_HOURS_ENABLED,
     DEFAULT_QUIET_START,
+    DEFAULT_REPLY_DASHBOARD_PATH,
+    DEFAULT_REPLY_CAST_DELAY_SECONDS,
+    DEFAULT_REPLY_VIEW_PATH,
     DEFAULT_RESTORE_SECONDS,
     DEFAULT_SHOW_SIDEBAR,
     DEFAULT_TTS_ENTITY,
@@ -47,6 +51,7 @@ PLATFORMS: list[str] = []
 SERVICE_SPEAK_TEXT = "speak_text"
 SERVICE_PLAY_RECORDING = "play_recording"
 SERVICE_DELETE_TEMP = "delete_temp_files"
+SERVICE_SHOW_REPLY_VIEW = "show_reply_view"
 
 
 @dataclass
@@ -148,6 +153,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         )
         _schedule_volume_restore(hass, options)
         _fire_history(hass, "text", targets, message, emergency)
+        await _maybe_show_reply_view(hass, options, targets, message)
 
     async def play_recording(call: ServiceCall) -> None:
         targets = _as_targets(call.data["target_entity"])
@@ -185,9 +191,20 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _schedule_volume_restore(hass, options)
         _fire_history(hass, "recording", targets, "Voice recording", emergency)
         _schedule_delete(hass, recording_id, cleanup_seconds)
+        await _maybe_show_reply_view(hass, options, targets, "Voice recording")
 
     async def delete_temp_files(call: ServiceCall) -> None:
         await _delete_all_temp(hass)
+
+    async def show_reply_view(call: ServiceCall) -> None:
+        targets = _as_targets(call.data["target_entity"])
+        await _show_reply_view(
+            hass,
+            targets,
+            call.data.get("dashboard_path") or options["reply_dashboard_path"],
+            call.data.get("view_path") or options["reply_view_path"],
+            call.data.get("message", "Reply to intercom"),
+        )
 
     hass.services.async_register(
         DOMAIN,
@@ -217,11 +234,25 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         ),
     )
     hass.services.async_register(DOMAIN, SERVICE_DELETE_TEMP, delete_temp_files)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SHOW_REPLY_VIEW,
+        show_reply_view,
+        schema=vol.Schema(
+            {
+                vol.Required("target_entity"): vol.Any(cv.entity_id, [cv.entity_id]),
+                vol.Optional("dashboard_path"): cv.string,
+                vol.Optional("view_path"): cv.string,
+                vol.Optional("message"): cv.string,
+            }
+        ),
+    )
 
     def unregister() -> None:
         hass.services.async_remove(DOMAIN, SERVICE_SPEAK_TEXT)
         hass.services.async_remove(DOMAIN, SERVICE_PLAY_RECORDING)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_TEMP)
+        hass.services.async_remove(DOMAIN, SERVICE_SHOW_REPLY_VIEW)
 
     return unregister
 
@@ -240,6 +271,10 @@ def _entry_options(entry: ConfigEntry) -> dict[str, Any]:
         "quiet_hours_enabled": bool(values.get("quiet_hours_enabled", DEFAULT_QUIET_HOURS_ENABLED)),
         "quiet_start": values.get("quiet_start", DEFAULT_QUIET_START),
         "quiet_end": values.get("quiet_end", DEFAULT_QUIET_END),
+        "auto_reply_view_enabled": bool(values.get("auto_reply_view_enabled", DEFAULT_AUTO_REPLY_VIEW_ENABLED)),
+        "reply_dashboard_path": values.get("reply_dashboard_path", DEFAULT_REPLY_DASHBOARD_PATH),
+        "reply_view_path": values.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH),
+        "reply_cast_delay_seconds": int(values.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)),
     }
 
 
@@ -338,6 +373,69 @@ def _fire_history(hass: HomeAssistant, kind: str, targets: list[str], message: s
     )
 
 
+async def _maybe_show_reply_view(
+    hass: HomeAssistant, options: dict[str, Any], targets: list[str], message: str
+) -> None:
+    """Optionally cast the configured reply view to display-like targets."""
+    if not options["auto_reply_view_enabled"]:
+        return
+    display_targets = [target for target in targets if _looks_like_display(hass, target)]
+    if not display_targets:
+        return
+
+    async def show_later() -> None:
+        await asyncio.sleep(max(0, min(options["reply_cast_delay_seconds"], 30)))
+        await _show_reply_view(
+            hass,
+            display_targets,
+            options["reply_dashboard_path"],
+            options["reply_view_path"],
+            message,
+        )
+
+    hass.loop.create_task(show_later())
+
+
+def _looks_like_display(hass: HomeAssistant, entity_id: str) -> bool:
+    """Return true for likely visual cast targets."""
+    state = hass.states.get(entity_id)
+    value = f"{entity_id} {state.attributes.get('friendly_name', '') if state else ''}".lower()
+    return any(term in value for term in ("display", "hub", "nesthub", "nest_hub", "chromecast"))
+
+
+async def _show_reply_view(
+    hass: HomeAssistant,
+    targets: list[str],
+    dashboard_path: str,
+    view_path: str,
+    message: str,
+) -> None:
+    """Cast a Lovelace reply view to one or more media players."""
+    dashboard_path = (dashboard_path or DEFAULT_REPLY_DASHBOARD_PATH).strip().strip("/")
+    view_path = (view_path or DEFAULT_REPLY_VIEW_PATH).strip().strip("/")
+    if not dashboard_path or not view_path:
+        return
+    for target in targets:
+        try:
+            await hass.services.async_call(
+                "cast",
+                "show_lovelace_view",
+                {
+                    CONF_ENTITY_ID: target,
+                    "dashboard_path": dashboard_path,
+                    "view_path": view_path,
+                },
+                blocking=False,
+            )
+        except Exception:  # noqa: BLE001 - cast availability varies by install.
+            _LOGGER.debug(
+                "Could not cast Family Intercom reply view to %s after %s",
+                target,
+                message[:80],
+                exc_info=True,
+            )
+
+
 async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
     """Register static JS and optionally the sidebar panel."""
     static_path = Path(__file__).parent / "www"
@@ -357,7 +455,7 @@ async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
             config={
                 "_panel_custom": {
                     "name": "family-intercom-panel",
-                    "js_url": f"{STATIC_URL}/family-intercom-panel-v5.js",
+                    "js_url": f"{STATIC_URL}/family-intercom-panel-v6.js",
                     "embed_iframe": False,
                     "trust_external_script": False,
                 }

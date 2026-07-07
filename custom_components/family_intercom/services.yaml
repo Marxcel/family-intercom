@@ -65,3 +65,31 @@ play_recording:
 delete_temp_files:
   name: Delete temporary files
   description: Delete any temporary Family Intercom recordings immediately.
+
+show_reply_view:
+  name: Show reply view
+  description: Cast the configured Lovelace reply view to one or more media players.
+  fields:
+    target_entity:
+      name: Target media player
+      required: true
+      selector:
+        entity:
+          domain: media_player
+    dashboard_path:
+      name: Dashboard path
+      description: Lovelace dashboard path, for example lovelace.
+      required: false
+      selector:
+        text:
+    view_path:
+      name: View path
+      description: Lovelace view path, for example family-intercom-reply.
+      required: false
+      selector:
+        text:
+    message:
+      name: Message context
+      required: false
+      selector:
+        text:

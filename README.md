@@ -25,6 +25,7 @@ It can:
 - Save favorite targets for faster household announcements.
 - Save custom quick messages directly from the panel.
 - Require a second confirmation tap before emergency broadcasts.
+- Optionally cast a reply dashboard view to Google/Nest displays after an intercom message.
 
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
@@ -63,7 +64,46 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Favorites:** Star frequently used devices so they stay at the top of the intercom workflow.
 - **Device search:** Search the live media-player list when the home has many speakers, hubs, and groups.
 - **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
+- **Reply view casting:** Optionally calls `cast.show_lovelace_view` after a message so a Google/Nest display can show a reply dashboard.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
+
+## Experimental reply view on Google/Nest displays
+
+Google/Nest display microphones are not reliably exposed to Home Assistant dashboards, so voice reply from the display microphone may not work. Touch replies are the reliable path.
+
+Family Intercom can automatically cast a Lovelace view after a message is sent to a display-like target. This lets the display show big reply buttons or a Family Intercom card.
+
+Recommended setup:
+
+1. Create a dashboard view with path:
+
+```text
+family-intercom-reply
+```
+
+2. Add a manual card:
+
+```yaml
+type: custom:family-intercom-card
+default_target: media_player.YOUR_REPLY_TARGET
+```
+
+Use `default_target` for the speaker/display where replies should be sent. For example, if replies from the office display should announce back in the kitchen, set the kitchen speaker or display as the default target.
+
+3. Open **Settings > Devices & services > Family Intercom > Configure**.
+4. Enable **Auto-cast reply view after messages**.
+5. Keep the default dashboard path as `lovelace` unless your dashboard URL uses another path.
+6. Set the reply view path to `family-intercom-reply`.
+
+Manual service:
+
+- `family_intercom.show_reply_view`
+
+Fields:
+
+- `target_entity`: Google/Nest display or cast target.
+- `dashboard_path`: usually `lovelace`.
+- `view_path`: usually `family-intercom-reply`.
 
 ## Device detection
 
@@ -88,7 +128,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module:
 
 ```text
-/family_intercom_static/family-intercom-panel-v3.js
+/family_intercom_static/family-intercom-panel-v6.js
 ```
 
 3. Add a manual card to any dashboard:

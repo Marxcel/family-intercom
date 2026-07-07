@@ -7,11 +7,15 @@ import voluptuous as vol
 from homeassistant import config_entries
 
 from .const import (
+    DEFAULT_AUTO_REPLY_VIEW_ENABLED,
     DEFAULT_CHIME_ENABLED,
     DEFAULT_CLEANUP_SECONDS,
     DEFAULT_QUIET_END,
     DEFAULT_QUIET_HOURS_ENABLED,
     DEFAULT_QUIET_START,
+    DEFAULT_REPLY_DASHBOARD_PATH,
+    DEFAULT_REPLY_CAST_DELAY_SECONDS,
+    DEFAULT_REPLY_VIEW_PATH,
     DEFAULT_RESTORE_SECONDS,
     DEFAULT_SHOW_SIDEBAR,
     DEFAULT_TTS_ENTITY,
@@ -83,5 +87,9 @@ def _options_schema(current):
             vol.Optional("quiet_hours_enabled", default=current.get("quiet_hours_enabled", DEFAULT_QUIET_HOURS_ENABLED)): bool,
             vol.Optional("quiet_start", default=current.get("quiet_start", DEFAULT_QUIET_START)): str,
             vol.Optional("quiet_end", default=current.get("quiet_end", DEFAULT_QUIET_END)): str,
+            vol.Optional("auto_reply_view_enabled", default=current.get("auto_reply_view_enabled", DEFAULT_AUTO_REPLY_VIEW_ENABLED)): bool,
+            vol.Optional("reply_dashboard_path", default=current.get("reply_dashboard_path", DEFAULT_REPLY_DASHBOARD_PATH)): str,
+            vol.Optional("reply_view_path", default=current.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH)): str,
+            vol.Optional("reply_cast_delay_seconds", default=current.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)): vol.Coerce(int),
         }
     )
