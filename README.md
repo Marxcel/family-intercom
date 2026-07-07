@@ -80,18 +80,27 @@ When the reply view is opened by Family Intercom, it uses the most recent sender
 
 If the Google display does not react to touch, expose these entities to Google Assistant/Home Assistant Cloud and use voice:
 
+- `switch.intercom_reply`
 - `switch.intercom_reply_yes`
 - `switch.intercom_reply_no`
 - `switch.intercom_reply_okay`
 - `switch.intercom_reply_coming`
 - `switch.intercom_reply_need_help`
 - `switch.intercom_reply_call_me`
+- `switch.intercom_yes`
+- `switch.intercom_no`
+- `switch.intercom_okay`
+- `switch.intercom_coming`
+- `switch.intercom_help`
+- `switch.intercom_call_me`
 
 Example phrase:
 
 ```text
-Hey Google, turn on Intercom Reply Yes
+Hey Google, turn on Intercom Yes
 ```
+
+Google Assistant does not pass arbitrary dictated text into a Home Assistant switch. Phrases like "turn on intercom reply and tell him I am outside" will not send the custom words. Use one of the fixed reply switches, or create your own Home Assistant automation/script for additional fixed phrases.
 
 Recommended setup:
 
@@ -134,10 +143,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.5.5 or newer, the module path is:
+For version 0.5.6 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v10.js?v=0.5.5
+/family_intercom_static/family-intercom-panel-v11.js?v=0.5.6
 ```
 
 Manual service:
@@ -173,7 +182,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v10.js?v=0.5.5
+/family_intercom_static/family-intercom-panel-v11.js?v=0.5.6
 ```
 
 3. Add a manual card to any dashboard:

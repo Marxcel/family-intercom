@@ -22,12 +22,19 @@ class ReplyChoice:
 
 
 REPLY_CHOICES = [
+    ReplyChoice("reply", "Intercom Reply", "Okay."),
     ReplyChoice("yes", "Intercom Reply Yes", "Yes."),
     ReplyChoice("no", "Intercom Reply No", "No."),
     ReplyChoice("okay", "Intercom Reply Okay", "Okay."),
     ReplyChoice("coming", "Intercom Reply Coming", "I am coming."),
     ReplyChoice("help", "Intercom Reply Need Help", "I need help please."),
     ReplyChoice("call_me", "Intercom Reply Call Me", "Call me please."),
+    ReplyChoice("short_yes", "Intercom Yes", "Yes."),
+    ReplyChoice("short_no", "Intercom No", "No."),
+    ReplyChoice("short_okay", "Intercom Okay", "Okay."),
+    ReplyChoice("short_coming", "Intercom Coming", "I am coming."),
+    ReplyChoice("short_help", "Intercom Help", "I need help please."),
+    ReplyChoice("short_call_me", "Intercom Call Me", "Call me please."),
 ]
 
 
