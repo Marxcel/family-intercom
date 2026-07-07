@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .reply import async_send_reply
 
 
 @dataclass(frozen=True)
@@ -84,18 +85,14 @@ class FamilyIntercomReplySwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Send this reply to the latest sender and return to off."""
-        context = self.hass.data.get(DOMAIN, {}).get("reply_context") or {}
-        session_id = context.get("session_id")
-        if session_id:
-            self.hass.bus.async_fire(
-                f"{DOMAIN}_reply",
-                {
-                    "session_id": session_id,
-                    "kind": "text",
-                    "message": self.choice.message,
-                    "from": "Google display",
-                },
-            )
+        options = {**self.entry.data, **self.entry.options}
+        await async_send_reply(
+            self.hass,
+            self.choice.message,
+            kind="text",
+            from_name="Google display",
+            notify_service=options.get("reply_notify_service"),
+        )
         self._attr_is_on = False
         self.async_write_ha_state()
 

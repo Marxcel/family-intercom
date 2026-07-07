@@ -32,6 +32,7 @@ from .const import (
     DEFAULT_QUIET_START,
     DEFAULT_REPLY_DASHBOARD_PATH,
     DEFAULT_REPLY_CAST_DELAY_SECONDS,
+    DEFAULT_REPLY_NOTIFY_SERVICE,
     DEFAULT_REPLY_VIEW_PATH,
     DEFAULT_RESTORE_SECONDS,
     DEFAULT_SHOW_SIDEBAR,
@@ -45,10 +46,11 @@ from .const import (
     STATIC_URL,
 )
 from .media import FamilyIntercomChimeView, FamilyIntercomMediaView, FamilyIntercomReplyContextView
+from .reply import async_send_reply
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = ["switch"]
+PLATFORMS: list[str] = ["sensor", "switch"]
 
 SERVICE_SPEAK_TEXT = "speak_text"
 SERVICE_PLAY_RECORDING = "play_recording"
@@ -203,22 +205,18 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         await _maybe_show_reply_view(hass, options, targets, "Voice recording")
 
     async def reply_text(call: ServiceCall) -> None:
-        session_id = call.data["session_id"]
         message = call.data["message"].strip()
         if not message:
             return
-        hass.bus.async_fire(
-            f"{DOMAIN}_reply",
-            {
-                "session_id": session_id,
-                "kind": "text",
-                "message": message,
-                "from": call.data.get("from_name", "Family Intercom"),
-            },
+        await async_send_reply(
+            hass,
+            message,
+            kind="text",
+            from_name=call.data.get("from_name", "Family Intercom"),
+            notify_service=options.get("reply_notify_service"),
         )
 
     async def reply_recording(call: ServiceCall) -> None:
-        session_id = call.data["session_id"]
         content_type = call.data["content_type"].lower().split(";", 1)[0].strip()
         filename = call.data.get("filename")
         raw = base64.b64decode(call.data["data"].split(",", 1)[-1], validate=False)
@@ -233,16 +231,14 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _data(hass)["recordings"][recording_id] = TempRecording(path=path, content_type=content_type)
         base_url = get_url(hass, prefer_external=True, allow_internal=True)
         media_url = f"{base_url}/api/{DOMAIN}/media/{recording_id}"
-        hass.bus.async_fire(
-            f"{DOMAIN}_reply",
-            {
-                "session_id": session_id,
-                "kind": "recording",
-                "message": "Voice reply",
-                "media_url": media_url,
-                "content_type": content_type,
-                "from": call.data.get("from_name", "Family Intercom"),
-            },
+        await async_send_reply(
+            hass,
+            "Voice reply",
+            kind="recording",
+            from_name=call.data.get("from_name", "Family Intercom"),
+            media_url=media_url,
+            content_type=content_type,
+            notify_service=options.get("reply_notify_service"),
         )
         _schedule_delete(hass, recording_id, cleanup_seconds)
 
@@ -381,6 +377,7 @@ def _entry_options(entry: ConfigEntry) -> dict[str, Any]:
         "reply_dashboard_path": values.get("reply_dashboard_path", DEFAULT_REPLY_DASHBOARD_PATH),
         "reply_view_path": values.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH),
         "reply_cast_delay_seconds": int(values.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)),
+        "reply_notify_service": values.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE),
     }
 
 

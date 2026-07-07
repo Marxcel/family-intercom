@@ -68,6 +68,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Cast card resource registration:** The integration registers its Lovelace card resource so Google/Nest Cast receivers can load the reply dashboard instead of showing a blank/dark screen.
 - **Reply-to-sender mode:** When a browser, phone, or tablet sends an intercom message, the casted reply view can send typed replies back to that original open browser session.
 - **Voice-command reply switches:** If a Google/Nest display does not pass touch events to the casted dashboard, expose the Intercom Reply switches to Google Assistant and reply by voice.
+- **Last reply status:** The `sensor.last_intercom_reply` entity shows whether a Google voice reply was delivered to an active sender or had no active sender context.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
 ## Experimental reply view on Google/Nest displays
@@ -77,6 +78,19 @@ Google/Nest display microphones, keyboards, and touch events are not reliably ex
 Family Intercom can automatically cast a Lovelace view after a message is sent to a display-like target. This lets the display show big reply buttons or a Family Intercom card.
 
 When the reply view is opened by Family Intercom, it uses the most recent sender session as the return path. Keep the original phone/tablet/browser Family Intercom page open if you want it to receive the reply. Replies are sent back through Home Assistant events and spoken by the original browser when the browser allows speech playback.
+
+Family Intercom also creates `sensor.last_intercom_reply`. Check this sensor after saying a Google voice reply command:
+
+- `status: delivered` means there was an active sender session.
+- `status: no_active_sender` means Google triggered the switch, but no phone/tablet/browser sender page was available to receive it.
+
+For more reliable phone delivery, set **Reply notification service** in the integration options, for example:
+
+```text
+notify.mobile_app_jorge_phone
+```
+
+When configured, every Google voice reply also sends a Home Assistant notification.
 
 If the Google display does not react to touch, expose these entities to Google Assistant/Home Assistant Cloud and use voice:
 
@@ -143,10 +157,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.5.6 or newer, the module path is:
+For version 0.5.7 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v11.js?v=0.5.6
+/family_intercom_static/family-intercom-panel-v12.js?v=0.5.7
 ```
 
 Manual service:
@@ -182,7 +196,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v11.js?v=0.5.6
+/family_intercom_static/family-intercom-panel-v12.js?v=0.5.7
 ```
 
 3. Add a manual card to any dashboard:
