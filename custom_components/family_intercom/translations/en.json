@@ -6,7 +6,8 @@
         "description": "Set up a household intercom panel for Home Assistant.",
         "data": {
           "tts_entity": "Default TTS entity",
-          "cleanup_seconds": "Seconds to keep temporary recordings"
+          "cleanup_seconds": "Seconds to keep temporary recordings",
+          "show_sidebar": "Show Family Intercom in the sidebar"
         }
       }
     },

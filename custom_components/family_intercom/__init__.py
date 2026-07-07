@@ -24,6 +24,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     DEFAULT_CLEANUP_SECONDS,
+    DEFAULT_SHOW_SIDEBAR,
     DEFAULT_TTS_ENTITY,
     DOMAIN,
     PANEL_URL_PATH,
@@ -88,7 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Family Intercom from a config entry."""
     hass.http.register_view(FamilyIntercomMediaView())
     entry.async_on_unload(_register_services(hass, entry))
-    entry.async_on_unload(await _register_frontend(hass))
+    entry.async_on_unload(await _register_frontend(hass, entry.data.get("show_sidebar", DEFAULT_SHOW_SIDEBAR)))
     return True
 
 
@@ -192,12 +193,14 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
     return unregister
 
 
-async def _register_frontend(hass: HomeAssistant):
-    """Register static JS and sidebar panel."""
+async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
+    """Register static JS and optionally the sidebar panel."""
     static_path = Path(__file__).parent / "www"
     await hass.http.async_register_static_paths(
         [StaticPathConfig(STATIC_URL, str(static_path), cache_headers=False)]
     )
+    if not show_sidebar:
+        return lambda: None
     try:
         frontend.async_register_built_in_panel(
             hass,

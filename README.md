@@ -21,6 +21,29 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 After setup, open **Family Intercom** from the Home Assistant sidebar.
 
+## Recommended use
+
+The default install shows **Family Intercom** in the Home Assistant sidebar. This is recommended because intercom use needs more room than a small card: target picker, typed message, recording controls, and quick messages.
+
+During setup, you can disable the sidebar entry if you only want to use the integration services or an optional dashboard card.
+
+## Optional dashboard card
+
+If you want Family Intercom inside an existing dashboard view:
+
+1. Go to **Settings > Dashboards > Resources**.
+2. Add this JavaScript module:
+
+```text
+/family_intercom_static/family-intercom-panel.js
+```
+
+3. Add a manual card to any dashboard:
+
+```yaml
+type: custom:family-intercom-card
+```
+
 ## Services
 
 - `family_intercom.speak_text`

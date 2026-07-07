@@ -174,3 +174,15 @@ class FamilyIntercomPanel extends HTMLElement {
 }
 
 customElements.define("family-intercom-panel", FamilyIntercomPanel);
+
+class FamilyIntercomCard extends FamilyIntercomPanel {
+  setConfig(config) {
+    this._config = config || {};
+  }
+
+  getCardSize() {
+    return 6;
+  }
+}
+
+customElements.define("family-intercom-card", FamilyIntercomCard);

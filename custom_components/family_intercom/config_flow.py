@@ -6,7 +6,7 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 
-from .const import DEFAULT_CLEANUP_SECONDS, DEFAULT_TTS_ENTITY, DOMAIN
+from .const import DEFAULT_CLEANUP_SECONDS, DEFAULT_SHOW_SIDEBAR, DEFAULT_TTS_ENTITY, DOMAIN
 
 
 class FamilyIntercomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -31,6 +31,7 @@ class FamilyIntercomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Optional("tts_entity", default=DEFAULT_TTS_ENTITY): str,
                 vol.Optional("cleanup_seconds", default=DEFAULT_CLEANUP_SECONDS): vol.Coerce(int),
+                vol.Optional("show_sidebar", default=DEFAULT_SHOW_SIDEBAR): bool,
             }
         )
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
