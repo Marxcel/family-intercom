@@ -93,3 +93,57 @@ show_reply_view:
       required: false
       selector:
         text:
+
+reply_text:
+  name: Reply with text
+  description: Send a typed reply back to the browser or device session that started the intercom message.
+  fields:
+    session_id:
+      name: Sender session ID
+      required: true
+      selector:
+        text:
+    message:
+      name: Reply message
+      required: true
+      selector:
+        text:
+          multiline: true
+    from_name:
+      name: From name
+      required: false
+      selector:
+        text:
+
+reply_recording:
+  name: Reply with recording
+  description: Send a temporary voice reply back to the browser or device session that started the intercom message.
+  fields:
+    session_id:
+      name: Sender session ID
+      required: true
+      selector:
+        text:
+    data:
+      name: Base64 audio data
+      required: true
+      selector:
+        text:
+          multiline: true
+    content_type:
+      name: Content type
+      required: true
+      example: audio/webm
+      selector:
+        text:
+    filename:
+      name: Filename
+      required: false
+      example: intercom.webm
+      selector:
+        text:
+    from_name:
+      name: From name
+      required: false
+      selector:
+        text:

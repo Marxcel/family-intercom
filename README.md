@@ -66,6 +66,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
 - **Reply view casting:** Optionally calls `cast.show_lovelace_view` after a message so a Google/Nest display can show a reply dashboard.
 - **Cast card resource registration:** The integration registers its Lovelace card resource so Google/Nest Cast receivers can load the reply dashboard instead of showing a blank/dark screen.
+- **Reply-to-sender mode:** When a browser, phone, or tablet sends an intercom message, the casted reply view can send typed replies back to that original open browser session.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
 
 ## Experimental reply view on Google/Nest displays
@@ -73,6 +74,8 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 Google/Nest display microphones are not reliably exposed to Home Assistant dashboards, so voice reply from the display microphone may not work. Touch replies are the reliable path.
 
 Family Intercom can automatically cast a Lovelace view after a message is sent to a display-like target. This lets the display show big reply buttons or a Family Intercom card.
+
+When the reply view is opened by Family Intercom, it uses the most recent sender session as the return path. Keep the original phone/tablet/browser Family Intercom page open if you want it to receive the reply. Typed replies are sent back through Home Assistant events and spoken by the original browser when the browser allows speech playback.
 
 Recommended setup:
 
@@ -115,6 +118,12 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
+For version 0.5.3 or newer, the module path is:
+
+```text
+/family_intercom_static/family-intercom-panel-v8.js?v=0.5.3
+```
+
 Manual service:
 
 - `family_intercom.show_reply_view`
@@ -148,7 +157,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v7.js?v=0.5.2
+/family_intercom_static/family-intercom-panel-v8.js?v=0.5.3
 ```
 
 3. Add a manual card to any dashboard:
@@ -172,6 +181,8 @@ cards:
 
 - `family_intercom.speak_text`
 - `family_intercom.play_recording`
+- `family_intercom.reply_text`
+- `family_intercom.reply_recording`
 - `family_intercom.delete_temp_files`
 
 ## Notes

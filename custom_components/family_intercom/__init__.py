@@ -44,7 +44,7 @@ from .const import (
     PANEL_URL_PATH,
     STATIC_URL,
 )
-from .media import FamilyIntercomChimeView, FamilyIntercomMediaView
+from .media import FamilyIntercomChimeView, FamilyIntercomMediaView, FamilyIntercomReplyContextView
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,8 @@ PLATFORMS: list[str] = []
 
 SERVICE_SPEAK_TEXT = "speak_text"
 SERVICE_PLAY_RECORDING = "play_recording"
+SERVICE_REPLY_RECORDING = "reply_recording"
+SERVICE_REPLY_TEXT = "reply_text"
 SERVICE_DELETE_TEMP = "delete_temp_files"
 SERVICE_SHOW_REPLY_VIEW = "show_reply_view"
 
@@ -104,6 +106,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Family Intercom from a config entry."""
     hass.http.register_view(FamilyIntercomMediaView())
     hass.http.register_view(FamilyIntercomChimeView())
+    hass.http.register_view(FamilyIntercomReplyContextView())
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     entry.async_on_unload(_register_services(hass, entry))
     options = _entry_options(entry)
@@ -156,6 +159,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         )
         _schedule_volume_restore(hass, options)
         _fire_history(hass, "text", targets, message, emergency)
+        _store_reply_context(hass, call, targets, "text", message)
         await _maybe_show_reply_view(hass, options, targets, message)
 
     async def play_recording(call: ServiceCall) -> None:
@@ -193,8 +197,53 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         )
         _schedule_volume_restore(hass, options)
         _fire_history(hass, "recording", targets, "Voice recording", emergency)
+        _store_reply_context(hass, call, targets, "recording", "Voice recording")
         _schedule_delete(hass, recording_id, cleanup_seconds)
         await _maybe_show_reply_view(hass, options, targets, "Voice recording")
+
+    async def reply_text(call: ServiceCall) -> None:
+        session_id = call.data["session_id"]
+        message = call.data["message"].strip()
+        if not message:
+            return
+        hass.bus.async_fire(
+            f"{DOMAIN}_reply",
+            {
+                "session_id": session_id,
+                "kind": "text",
+                "message": message,
+                "from": call.data.get("from_name", "Family Intercom"),
+            },
+        )
+
+    async def reply_recording(call: ServiceCall) -> None:
+        session_id = call.data["session_id"]
+        content_type = call.data["content_type"].lower().split(";", 1)[0].strip()
+        filename = call.data.get("filename")
+        raw = base64.b64decode(call.data["data"].split(",", 1)[-1], validate=False)
+        if not raw:
+            return
+        if len(raw) > 5 * 1024 * 1024:
+            raise vol.Invalid("Recording is too large. Keep intercom clips under 5 MB.")
+        recording_id = secrets.token_urlsafe(24)
+        extension = _extension_for_content_type(content_type, filename)
+        path = _temp_dir(hass) / f"{recording_id}{extension}"
+        await hass.async_add_executor_job(path.write_bytes, raw)
+        _data(hass)["recordings"][recording_id] = TempRecording(path=path, content_type=content_type)
+        base_url = get_url(hass, prefer_external=True, allow_internal=True)
+        media_url = f"{base_url}/api/{DOMAIN}/media/{recording_id}"
+        hass.bus.async_fire(
+            f"{DOMAIN}_reply",
+            {
+                "session_id": session_id,
+                "kind": "recording",
+                "message": "Voice reply",
+                "media_url": media_url,
+                "content_type": content_type,
+                "from": call.data.get("from_name", "Family Intercom"),
+            },
+        )
+        _schedule_delete(hass, recording_id, cleanup_seconds)
 
     async def delete_temp_files(call: ServiceCall) -> None:
         await _delete_all_temp(hass)
@@ -219,6 +268,8 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
                 vol.Required("message"): cv.string,
                 vol.Optional("tts_entity"): cv.entity_id,
                 vol.Optional("emergency", default=False): cv.boolean,
+                vol.Optional("sender_session_id"): cv.string,
+                vol.Optional("sender_name"): cv.string,
             }
         ),
     )
@@ -233,6 +284,34 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
                 vol.Required("content_type"): cv.string,
                 vol.Optional("filename"): cv.string,
                 vol.Optional("emergency", default=False): cv.boolean,
+                vol.Optional("sender_session_id"): cv.string,
+                vol.Optional("sender_name"): cv.string,
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REPLY_TEXT,
+        reply_text,
+        schema=vol.Schema(
+            {
+                vol.Required("session_id"): cv.string,
+                vol.Required("message"): cv.string,
+                vol.Optional("from_name"): cv.string,
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REPLY_RECORDING,
+        reply_recording,
+        schema=vol.Schema(
+            {
+                vol.Required("session_id"): cv.string,
+                vol.Required("data"): cv.string,
+                vol.Required("content_type"): cv.string,
+                vol.Optional("filename"): cv.string,
+                vol.Optional("from_name"): cv.string,
             }
         ),
     )
@@ -254,10 +333,33 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
     def unregister() -> None:
         hass.services.async_remove(DOMAIN, SERVICE_SPEAK_TEXT)
         hass.services.async_remove(DOMAIN, SERVICE_PLAY_RECORDING)
+        hass.services.async_remove(DOMAIN, SERVICE_REPLY_TEXT)
+        hass.services.async_remove(DOMAIN, SERVICE_REPLY_RECORDING)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_TEMP)
         hass.services.async_remove(DOMAIN, SERVICE_SHOW_REPLY_VIEW)
 
     return unregister
+
+
+def _store_reply_context(
+    hass: HomeAssistant,
+    call: ServiceCall,
+    targets: list[str],
+    kind: str,
+    message: str,
+) -> None:
+    """Store latest reply context for casted reply dashboards."""
+    session_id = call.data.get("sender_session_id")
+    if not session_id:
+        return
+    _data(hass)["reply_context"] = {
+        "session_id": session_id,
+        "sender_name": call.data.get("sender_name", "Original sender"),
+        "targets": targets,
+        "kind": kind,
+        "message": message[:240],
+        "time": datetime.now().isoformat(),
+    }
 
 
 def _entry_options(entry: ConfigEntry) -> dict[str, Any]:

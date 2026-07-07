@@ -3,8 +3,8 @@
 DOMAIN = "family_intercom"
 PANEL_URL_PATH = "family-intercom"
 STATIC_URL = "/family_intercom_static"
-FRONTEND_MODULE = "family-intercom-panel-v7.js"
-INTEGRATION_VERSION = "0.5.2"
+FRONTEND_MODULE = "family-intercom-panel-v8.js"
+INTEGRATION_VERSION = "0.5.3"
 DEFAULT_TTS_ENTITY = "tts.home_assistant_cloud"
 DEFAULT_CLEANUP_SECONDS = 120
 DEFAULT_SHOW_SIDEBAR = True

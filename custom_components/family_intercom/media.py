@@ -42,6 +42,20 @@ class FamilyIntercomChimeView(HomeAssistantView):
         return web.Response(body=_chime_wav(), headers={"Content-Type": "audio/wav"})
 
 
+class FamilyIntercomReplyContextView(HomeAssistantView):
+    """Return the latest reply context for casted reply dashboards."""
+
+    url = f"/api/{DOMAIN}/reply_context"
+    name = f"api:{DOMAIN}:reply_context"
+    requires_auth = False
+
+    async def get(self, request):
+        """Return latest reply context."""
+        hass = request.app["hass"]
+        context = hass.data.get(DOMAIN, {}).get("reply_context") or {}
+        return web.json_response(context)
+
+
 def _chime_wav() -> bytes:
     """Generate a short two-tone WAV chime."""
     sample_rate = 22050
