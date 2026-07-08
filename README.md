@@ -200,12 +200,12 @@ Use `default_target` for the speaker/display where replies should be sent. For e
 5. Set the dashboard path to the first part of your dashboard URL. For example:
 
 ```text
-56-hunt-rd
+12-Nice-rd
 ```
 
-If your reply view URL is `/56-hunt-rd/family-intercom-reply`, then:
+If your reply view URL is `/12-nice-rd/family-intercom-reply`, then:
 
-- Dashboard path: `56-hunt-rd`
+- Dashboard path: `12-nice-rd`
 - View path: `family-intercom-reply`
 
 6. Set the reply view path to `family-intercom-reply`.
