@@ -31,6 +31,13 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.7.1
+
+Maintenance release:
+
+- Updated Home Assistant dashboard path examples to `123-nice-st`.
+- Updated the frontend resource cache-buster to `0.7.1`.
+
 ### 0.7.0
 
 Feature release:
@@ -200,12 +207,12 @@ Use `default_target` for the speaker/display where replies should be sent. For e
 5. Set the dashboard path to the first part of your dashboard URL. For example:
 
 ```text
-12-Nice-rd
+123-nice-st
 ```
 
-If your reply view URL is `/12-nice-rd/family-intercom-reply`, then:
+If your reply view URL is `/123-nice-st/family-intercom-reply`, then:
 
-- Dashboard path: `12-nice-rd`
+- Dashboard path: `123-nice-st`
 - View path: `family-intercom-reply`
 
 6. Set the reply view path to `family-intercom-reply`.
@@ -219,10 +226,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.7.0 or newer, the module path is:
+For version 0.7.1 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.7.0
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.1
 ```
 
 Manual service:
@@ -232,7 +239,7 @@ Manual service:
 Fields:
 
 - `target_entity`: Google/Nest display or cast target.
-- `dashboard_path`: dashboard URL path, for example `lovelace` or `56-hunt-rd`.
+- `dashboard_path`: dashboard URL path, for example `lovelace` or `123-nice-st`.
 - `view_path`: usually `family-intercom-reply`.
 
 ## Device detection
@@ -258,7 +265,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.7.0
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.1
 ```
 
 3. Add a manual card to any dashboard:

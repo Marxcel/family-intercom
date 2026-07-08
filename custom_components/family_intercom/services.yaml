@@ -112,7 +112,7 @@ show_reply_view:
           domain: media_player
     dashboard_path:
       name: Dashboard path
-      description: Dashboard URL path, for example lovelace or 56-hunt-rd.
+      description: Dashboard URL path, for example lovelace or 123-nice-st.
       required: false
       selector:
         text:
