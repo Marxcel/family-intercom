@@ -12,6 +12,7 @@ from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 
 from .const import DOMAIN
+from .helpers import parse_reply_phrases, parse_stations
 
 
 class FamilyIntercomMediaView(HomeAssistantView):
@@ -54,6 +55,38 @@ class FamilyIntercomReplyContextView(HomeAssistantView):
         hass = request.app["hass"]
         context = hass.data.get(DOMAIN, {}).get("reply_context") or {}
         return web.json_response(context)
+
+
+class FamilyIntercomConfigView(HomeAssistantView):
+    """Return panel configuration."""
+
+    url = f"/api/{DOMAIN}/config"
+    name = f"api:{DOMAIN}:config"
+    requires_auth = True
+
+    async def get(self, request):
+        """Return configured stations and reply phrases."""
+        hass = request.app["hass"]
+        options = hass.data.get(DOMAIN, {}).get("options") or {}
+        return web.json_response(
+            {
+                "stations": parse_stations(options.get("stations_json")),
+                "reply_phrases": parse_reply_phrases(options.get("reply_phrases")),
+            }
+        )
+
+
+class FamilyIntercomInboxView(HomeAssistantView):
+    """Return reply history."""
+
+    url = f"/api/{DOMAIN}/inbox"
+    name = f"api:{DOMAIN}:inbox"
+    requires_auth = True
+
+    async def get(self, request):
+        """Return latest replies."""
+        hass = request.app["hass"]
+        return web.json_response({"replies": hass.data.get(DOMAIN, {}).get("reply_history", [])[:50]})
 
 
 def _chime_wav() -> bytes:

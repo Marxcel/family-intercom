@@ -3,8 +3,8 @@
 DOMAIN = "family_intercom"
 PANEL_URL_PATH = "family-intercom"
 STATIC_URL = "/family_intercom_static"
-FRONTEND_MODULE = "family-intercom-panel-v12.js"
-INTEGRATION_VERSION = "0.5.7"
+FRONTEND_MODULE = "family-intercom-panel-v13.js"
+INTEGRATION_VERSION = "0.6.0"
 DEFAULT_TTS_ENTITY = "tts.home_assistant_cloud"
 DEFAULT_CLEANUP_SECONDS = 120
 DEFAULT_SHOW_SIDEBAR = True
@@ -20,3 +20,5 @@ DEFAULT_REPLY_DASHBOARD_PATH = "lovelace"
 DEFAULT_REPLY_VIEW_PATH = "family-intercom-reply"
 DEFAULT_REPLY_CAST_DELAY_SECONDS = 20
 DEFAULT_REPLY_NOTIFY_SERVICE = ""
+DEFAULT_REPLY_PHRASES = "Yes.|No.|Okay.|I am coming.|I need help please.|Call me please."
+DEFAULT_STATIONS_JSON = "[]"

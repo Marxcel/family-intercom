@@ -47,6 +47,9 @@ async def async_send_reply(
         "time": now,
     }
     _data(hass)["last_reply"] = reply
+    history = list(_data(hass).get("reply_history", []))
+    history.insert(0, reply)
+    _data(hass)["reply_history"] = history[:50]
 
     if session_id:
         event_data = {

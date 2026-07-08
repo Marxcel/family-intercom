@@ -69,7 +69,43 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Reply-to-sender mode:** When a browser, phone, or tablet sends an intercom message, the casted reply view can send typed replies back to that original open browser session.
 - **Voice-command reply switches:** If a Google/Nest display does not pass touch events to the casted dashboard, expose the Intercom Reply switches to Google Assistant and reply by voice.
 - **Last reply status:** The `sensor.last_intercom_reply` entity shows whether a Google voice reply was delivered to an active sender or had no active sender context.
+- **Stations:** Configure named intercom stations such as Kitchen, Office, Front Desk, or Apartment 1A instead of making users pick raw media players.
+- **Reply inbox:** The panel shows recent replies stored by Home Assistant, not just browser-local history.
 - **Options page:** Configure TTS entity, cleanup delay, sidebar visibility, chime, volume, and quiet hours from the integration's Configure button.
+
+## Stations
+
+Stations make Family Intercom feel like a house/building intercom instead of a raw media-player sender. Configure stations in **Settings > Devices & services > Family Intercom > Configure** using JSON:
+
+```json
+[
+  {
+    "name": "Kitchen",
+    "targets": ["media_player.kitchen_display"],
+    "notify": "notify.mobile_app_marxcel"
+  },
+  {
+    "name": "Office",
+    "targets": ["media_player.jorges_office_google_hub"]
+  },
+  {
+    "name": "Apartment 1A",
+    "targets": ["media_player.apartment_1a_speaker"]
+  }
+]
+```
+
+The panel shows stations as first-class targets. If a station's target media player is unavailable, the station shows as offline.
+
+## Reply phrases
+
+Configure fixed reply phrases in options using `|` separators:
+
+```text
+Yes.|No.|Okay.|I am coming.|Give me five minutes.|Call me please.
+```
+
+These phrases appear in the panel quick replies and can also generate additional voice-friendly reply switch entities when Home Assistant reloads the integration.
 
 ## Experimental reply view on Google/Nest displays
 
@@ -157,10 +193,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.5.7 or newer, the module path is:
+For version 0.6.0 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v12.js?v=0.5.7
+/family_intercom_static/family-intercom-panel-v13.js?v=0.6.0
 ```
 
 Manual service:
@@ -196,7 +232,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v12.js?v=0.5.7
+/family_intercom_static/family-intercom-panel-v13.js?v=0.6.0
 ```
 
 3. Add a manual card to any dashboard:

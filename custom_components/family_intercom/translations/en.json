@@ -19,7 +19,9 @@
           "reply_dashboard_path": "Reply dashboard URL path",
           "reply_view_path": "Reply view path",
           "reply_cast_delay_seconds": "Seconds to wait before showing reply view",
-          "reply_notify_service": "Reply notification service"
+          "reply_notify_service": "Reply notification service",
+          "reply_phrases": "Reply phrases, separated by |",
+          "stations_json": "Stations JSON"
         }
       }
     },
@@ -50,7 +52,9 @@
           "reply_dashboard_path": "Reply dashboard URL path",
           "reply_view_path": "Reply view path",
           "reply_cast_delay_seconds": "Seconds to wait before showing reply view",
-          "reply_notify_service": "Reply notification service"
+          "reply_notify_service": "Reply notification service",
+          "reply_phrases": "Reply phrases, separated by |",
+          "stations_json": "Stations JSON"
         }
       }
     },

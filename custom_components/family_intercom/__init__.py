@@ -34,8 +34,10 @@ from .const import (
     DEFAULT_REPLY_CAST_DELAY_SECONDS,
     DEFAULT_REPLY_NOTIFY_SERVICE,
     DEFAULT_REPLY_VIEW_PATH,
+    DEFAULT_REPLY_PHRASES,
     DEFAULT_RESTORE_SECONDS,
     DEFAULT_SHOW_SIDEBAR,
+    DEFAULT_STATIONS_JSON,
     DEFAULT_TTS_ENTITY,
     DEFAULT_VOLUME_ENABLED,
     DEFAULT_VOLUME_LEVEL,
@@ -45,7 +47,13 @@ from .const import (
     PANEL_URL_PATH,
     STATIC_URL,
 )
-from .media import FamilyIntercomChimeView, FamilyIntercomMediaView, FamilyIntercomReplyContextView
+from .media import (
+    FamilyIntercomChimeView,
+    FamilyIntercomConfigView,
+    FamilyIntercomInboxView,
+    FamilyIntercomMediaView,
+    FamilyIntercomReplyContextView,
+)
 from .reply import async_send_reply
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,9 +117,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.http.register_view(FamilyIntercomMediaView())
     hass.http.register_view(FamilyIntercomChimeView())
     hass.http.register_view(FamilyIntercomReplyContextView())
+    hass.http.register_view(FamilyIntercomConfigView())
+    hass.http.register_view(FamilyIntercomInboxView())
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     entry.async_on_unload(_register_services(hass, entry))
     options = _entry_options(entry)
+    _data(hass)["options"] = options
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(await _register_frontend(hass, options["show_sidebar"]))
     entry.async_on_unload(_schedule_lovelace_resource_registration(hass))
@@ -378,6 +389,8 @@ def _entry_options(entry: ConfigEntry) -> dict[str, Any]:
         "reply_view_path": values.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH),
         "reply_cast_delay_seconds": int(values.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)),
         "reply_notify_service": values.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE),
+        "reply_phrases": values.get("reply_phrases", DEFAULT_REPLY_PHRASES),
+        "stations_json": values.get("stations_json", DEFAULT_STATIONS_JSON),
     }
 
 

@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .helpers import parse_reply_phrases, slugify
 from .reply import async_send_reply
 
 
@@ -45,7 +46,15 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Family Intercom reply switches."""
-    async_add_entities(FamilyIntercomReplySwitch(hass, entry, choice) for choice in REPLY_CHOICES)
+    options = {**entry.data, **entry.options}
+    choices = list(REPLY_CHOICES)
+    existing = {choice.message.lower() for choice in choices}
+    custom_choices = [
+        ReplyChoice(f"custom_{index}_{slugify(phrase)}", f"Intercom {phrase.rstrip('.')}", phrase)
+        for index, phrase in enumerate(parse_reply_phrases(options.get("reply_phrases")), start=1)
+    ]
+    choices.extend(choice for choice in custom_choices if choice.message.lower() not in existing)
+    async_add_entities(FamilyIntercomReplySwitch(hass, entry, choice) for choice in choices)
 
 
 class FamilyIntercomReplySwitch(SwitchEntity):

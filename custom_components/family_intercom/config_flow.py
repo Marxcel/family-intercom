@@ -16,9 +16,11 @@ from .const import (
     DEFAULT_REPLY_DASHBOARD_PATH,
     DEFAULT_REPLY_CAST_DELAY_SECONDS,
     DEFAULT_REPLY_NOTIFY_SERVICE,
+    DEFAULT_REPLY_PHRASES,
     DEFAULT_REPLY_VIEW_PATH,
     DEFAULT_RESTORE_SECONDS,
     DEFAULT_SHOW_SIDEBAR,
+    DEFAULT_STATIONS_JSON,
     DEFAULT_TTS_ENTITY,
     DEFAULT_VOLUME_ENABLED,
     DEFAULT_VOLUME_LEVEL,
@@ -93,5 +95,7 @@ def _options_schema(current):
             vol.Optional("reply_view_path", default=current.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH)): str,
             vol.Optional("reply_cast_delay_seconds", default=current.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)): vol.Coerce(int),
             vol.Optional("reply_notify_service", default=current.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE)): str,
+            vol.Optional("reply_phrases", default=current.get("reply_phrases", DEFAULT_REPLY_PHRASES)): str,
+            vol.Optional("stations_json", default=current.get("stations_json", DEFAULT_STATIONS_JSON)): str,
         }
     )
