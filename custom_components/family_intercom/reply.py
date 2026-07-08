@@ -27,12 +27,33 @@ async def async_send_reply(
     media_url: str | None = None,
     content_type: str | None = None,
     notify_service: str | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
-    """Store and deliver a reply to the latest sender context."""
-    context = hass.data.get(DOMAIN, {}).get("reply_context") or {}
-    session_id = context.get("session_id")
+    """Store and deliver a reply.
+
+    If ``session_id`` is provided (the normal case: a reply sent from the
+    panel), the reply is routed to that exact session only. It must NOT
+    silently fall back to "whatever is latest" - doing so is what caused
+    replies to be misdelivered to the wrong original sender when multiple
+    intercom messages were in flight at once.
+
+    If ``session_id`` is omitted entirely (the voice-assistant reply
+    switches don't know a session id), fall back to the single latest
+    sender context, matching the previous best-effort behavior for that
+    use case only.
+    """
+    domain_data = hass.data.get(DOMAIN, {})
+    if session_id:
+        context = (domain_data.get("reply_sessions") or {}).get(session_id) or {}
+        status_if_missing = "session_expired"
+    else:
+        context = domain_data.get("reply_context") or {}
+        status_if_missing = "no_active_sender"
+
+    resolved_session_id = context.get("session_id")
     now = datetime.now().isoformat()
-    status = "delivered" if session_id else "no_active_sender"
+    status = "delivered" if resolved_session_id else status_if_missing
+    session_id = resolved_session_id
     reply = {
         "session_id": session_id,
         "kind": kind,

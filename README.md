@@ -29,6 +29,18 @@ It can:
 
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
+## Changelog
+
+### 0.6.1
+
+Bugfix release:
+
+- **Fixed replies being routed to the wrong sender.** `reply_text` and `reply_recording` previously accepted a `session_id` but silently ignored it, always delivering to whichever intercom message was sent most recently overall. If two messages were sent close together to different people, a reply could go to the wrong one. Replies sent with a `session_id` are now routed to that exact sender; reply switches (which have no session id) keep the previous best-effort "reply to whoever was latest" behavior.
+- **Fixed announcement volume drifting on rapid successive messages.** If a second message was sent to the same device before the first one's volume-restore delay had finished, the code could mistake the temporarily raised volume for the device's real original volume and leave it there. Volume restore now uses a per-device reference count so the true original volume is only captured once and only restored after every in-flight announcement to that device has finished.
+- Removed 12 unused legacy panel JS files (`family-intercom-panel.js` through `-v12.js`) that were left behind from earlier versions and only added dead weight to the HACS download; only the active `-v13.js` panel remains.
+
+**Known limitation (unchanged):** `/api/family_intercom/reply_context` intentionally does not require authentication, so that Cast displays running the reply view can read it without logging in. This means anyone with network access to your Home Assistant instance can read the most recently sent intercom message's text, sender name, and target devices from that endpoint. Keep this in mind before sending anything sensitive, especially if remote access is enabled.
+
 ## HACS installation
 
 1. Add this repository as a custom repository in HACS.
@@ -193,10 +205,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.6.0 or newer, the module path is:
+For version 0.6.1 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.6.0
+/family_intercom_static/family-intercom-panel-v13.js?v=0.6.1
 ```
 
 Manual service:
@@ -232,7 +244,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.6.0
+/family_intercom_static/family-intercom-panel-v13.js?v=0.6.1
 ```
 
 3. Add a manual card to any dashboard:

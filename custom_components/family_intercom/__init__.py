@@ -171,7 +171,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             },
             blocking=False,
         )
-        _schedule_volume_restore(hass, options)
+        _schedule_volume_restore(hass, options, targets)
         _fire_history(hass, "text", targets, message, emergency)
         _store_reply_context(hass, call, targets, "text", message)
         await _maybe_show_reply_view(hass, options, targets, message)
@@ -209,7 +209,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             },
             blocking=False,
         )
-        _schedule_volume_restore(hass, options)
+        _schedule_volume_restore(hass, options, targets)
         _fire_history(hass, "recording", targets, "Voice recording", emergency)
         _store_reply_context(hass, call, targets, "recording", "Voice recording")
         _schedule_delete(hass, recording_id, cleanup_seconds)
@@ -225,6 +225,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             kind="text",
             from_name=call.data.get("from_name", "Family Intercom"),
             notify_service=options.get("reply_notify_service"),
+            session_id=call.data.get("session_id"),
         )
 
     async def reply_recording(call: ServiceCall) -> None:
@@ -250,6 +251,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             media_url=media_url,
             content_type=content_type,
             notify_service=options.get("reply_notify_service"),
+            session_id=call.data.get("session_id"),
         )
         _schedule_delete(hass, recording_id, cleanup_seconds)
 
@@ -349,6 +351,10 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
     return unregister
 
 
+REPLY_SESSION_MAX_AGE_SECONDS = 1800
+REPLY_SESSION_MAX_COUNT = 20
+
+
 def _store_reply_context(
     hass: HomeAssistant,
     call: ServiceCall,
@@ -356,11 +362,20 @@ def _store_reply_context(
     kind: str,
     message: str,
 ) -> None:
-    """Store latest reply context for casted reply dashboards."""
+    """Store reply context, keyed by session, for casted reply dashboards.
+
+    Both a per-session record and a single 'latest' pointer are kept.
+    The per-session record lets reply_text/reply_recording route a reply
+    to the exact sender it was meant for, even if a newer message has
+    since gone out to someone else. The 'latest' pointer is kept only for
+    the voice-assistant reply switches, which have no way to know a
+    session id and are intentionally best-effort ("reply to whoever most
+    recently sent something").
+    """
     session_id = call.data.get("sender_session_id")
     if not session_id:
         return
-    _data(hass)["reply_context"] = {
+    context = {
         "session_id": session_id,
         "sender_name": call.data.get("sender_name", "Original sender"),
         "targets": targets,
@@ -368,6 +383,33 @@ def _store_reply_context(
         "message": message[:240],
         "time": datetime.now().isoformat(),
     }
+    data = _data(hass)
+    data["reply_context"] = context
+    sessions = data.setdefault("reply_sessions", {})
+    sessions[session_id] = context
+    _prune_reply_sessions(sessions)
+
+
+def _prune_reply_sessions(
+    sessions: dict[str, Any],
+    max_age_seconds: int = REPLY_SESSION_MAX_AGE_SECONDS,
+    max_sessions: int = REPLY_SESSION_MAX_COUNT,
+) -> None:
+    """Drop expired or excess reply sessions so this dict can't grow forever."""
+    now = datetime.now()
+    for session_id in list(sessions):
+        stored_time_raw = sessions[session_id].get("time")
+        try:
+            stored_time = datetime.fromisoformat(stored_time_raw)
+        except (TypeError, ValueError):
+            sessions.pop(session_id, None)
+            continue
+        if (now - stored_time).total_seconds() > max_age_seconds:
+            sessions.pop(session_id, None)
+    if len(sessions) > max_sessions:
+        oldest_first = sorted(sessions.items(), key=lambda kv: kv[1].get("time", ""))
+        for session_id, _ in oldest_first[: len(sessions) - max_sessions]:
+            sessions.pop(session_id, None)
 
 
 def _entry_options(entry: ConfigEntry) -> dict[str, Any]:
@@ -423,15 +465,27 @@ def _quiet_blocked(options: dict[str, Any], emergency: bool) -> bool:
 
 
 async def _prepare_announcement(hass: HomeAssistant, options: dict[str, Any], targets: list[str]) -> None:
-    """Apply volume and chime before an announcement."""
+    """Apply volume and chime before an announcement.
+
+    Volume restore uses a per-target reference count (data["volume_refcounts"]).
+    The true original volume for a target is only captured the first time we
+    touch it while its refcount is 0; if a second message comes in for the
+    same target before the first one's restore has fired, we increment the
+    count instead of re-capturing, so we never mistake our own temporary
+    "announcement volume" for the device's real original volume.
+    """
     data = _data(hass)
-    data["restore_volumes"] = data.get("restore_volumes", {})
+    data.setdefault("restore_volumes", {})
+    data.setdefault("volume_refcounts", {})
     if options["volume_enabled"]:
         for target in targets:
-            state = hass.states.get(target)
-            old_volume = state.attributes.get("volume_level") if state else None
-            if old_volume is not None and target not in data["restore_volumes"]:
-                data["restore_volumes"][target] = old_volume
+            refcounts = data["volume_refcounts"]
+            if refcounts.get(target, 0) == 0:
+                state = hass.states.get(target)
+                old_volume = state.attributes.get("volume_level") if state else None
+                if old_volume is not None:
+                    data["restore_volumes"][target] = old_volume
+            refcounts[target] = refcounts.get(target, 0) + 1
             await hass.services.async_call(
                 "media_player",
                 "volume_set",
@@ -453,25 +507,35 @@ async def _prepare_announcement(hass: HomeAssistant, options: dict[str, Any], ta
         await asyncio.sleep(1.15)
 
 
-def _schedule_volume_restore(hass: HomeAssistant, options: dict[str, Any]) -> None:
-    """Restore target volumes after playback has had time to start."""
+def _schedule_volume_restore(hass: HomeAssistant, options: dict[str, Any], targets: list[str]) -> None:
+    """Restore target volumes after playback has had time to start.
+
+    Only actually restores a target's volume once its reference count
+    reaches zero, i.e. once every in-flight announcement that touched it
+    has finished waiting. This prevents an overlapping second message from
+    causing the first message's restore to fire early (or the second
+    message's restore to fire against a target it never should have
+    touched).
+    """
     if not options["volume_enabled"]:
         return
     data = _data(hass)
-    restore = dict(data.get("restore_volumes", {}))
-    data["restore_volumes"] = {}
-    if not restore:
-        return
 
     async def restore_later() -> None:
         await asyncio.sleep(options["restore_seconds"])
-        for target, old_volume in restore.items():
-            await hass.services.async_call(
-                "media_player",
-                "volume_set",
-                {CONF_ENTITY_ID: target, "volume_level": old_volume},
-                blocking=False,
-            )
+        refcounts = data.setdefault("volume_refcounts", {})
+        restore_volumes = data.setdefault("restore_volumes", {})
+        for target in targets:
+            refcounts[target] = max(0, refcounts.get(target, 1) - 1)
+            if refcounts[target] == 0:
+                old_volume = restore_volumes.pop(target, None)
+                if old_volume is not None:
+                    await hass.services.async_call(
+                        "media_player",
+                        "volume_set",
+                        {CONF_ENTITY_ID: target, "volume_level": old_volume},
+                        blocking=False,
+                    )
 
     hass.loop.create_task(restore_later())
 
