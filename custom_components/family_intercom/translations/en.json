@@ -26,7 +26,9 @@
       }
     },
     "error": {
-      "cleanup_too_short": "Use at least 15 seconds so cast devices have time to load the recording."
+      "cleanup_too_short": "Use at least 15 seconds so cast devices have time to load the recording.",
+      "invalid_json": "Stations must be valid JSON - a list of objects like [{\"name\": \"Kitchen\", \"targets\": [\"media_player.kitchen_display\"]}].",
+      "invalid_stations": "No usable stations found in that JSON - each entry needs at least a \"name\" and a \"targets\" entity list."
     },
     "abort": {
       "already_configured": "Family Intercom is already configured."
@@ -59,7 +61,9 @@
       }
     },
     "error": {
-      "cleanup_too_short": "Use at least 15 seconds so cast devices have time to load the recording."
+      "cleanup_too_short": "Use at least 15 seconds so cast devices have time to load the recording.",
+      "invalid_json": "Stations must be valid JSON - a list of objects like [{\"name\": \"Kitchen\", \"targets\": [\"media_player.kitchen_display\"]}].",
+      "invalid_stations": "No usable stations found in that JSON - each entry needs at least a \"name\" and a \"targets\" entity list."
     }
   }
 }

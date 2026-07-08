@@ -21,6 +21,7 @@ from homeassistant.const import CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.network import get_url
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -44,9 +45,13 @@ from .const import (
     DOMAIN,
     FRONTEND_MODULE,
     INTEGRATION_VERSION,
+    NOTIFICATION_ACTION_EVENT,
+    NOTIFICATION_ACTION_MAX_BUTTONS,
+    NOTIFICATION_ACTION_PREFIX,
     PANEL_URL_PATH,
     STATIC_URL,
 )
+from .helpers import parse_reply_phrases
 from .media import (
     FamilyIntercomChimeView,
     FamilyIntercomConfigView,
@@ -66,6 +71,9 @@ SERVICE_REPLY_RECORDING = "reply_recording"
 SERVICE_REPLY_TEXT = "reply_text"
 SERVICE_DELETE_TEMP = "delete_temp_files"
 SERVICE_SHOW_REPLY_VIEW = "show_reply_view"
+
+STORAGE_VERSION = 1
+STORAGE_KEY = f"{DOMAIN}_reply_data"
 
 
 @dataclass
@@ -114,6 +122,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Family Intercom from a config entry."""
+    await _async_load_persisted_reply_data(hass)
     hass.http.register_view(FamilyIntercomMediaView())
     hass.http.register_view(FamilyIntercomChimeView())
     hass.http.register_view(FamilyIntercomReplyContextView())
@@ -129,6 +138,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def _async_load_persisted_reply_data(hass: HomeAssistant) -> None:
+    """Load reply history/sessions saved from a previous run, if any.
+
+    Without this, a Home Assistant restart (including the kind that
+    happens right after a HACS update) silently wipes reply history and
+    any in-flight reply sessions, since they previously lived only in
+    hass.data for the lifetime of the process.
+    """
+    data = _data(hass)
+    if "store" in data:
+        return  # Already loaded (e.g. a second config entry, or a reload).
+    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+    data["store"] = store
+    stored = await store.async_load() or {}
+    data.setdefault("reply_history", stored.get("reply_history", []))
+    data.setdefault("reply_sessions", stored.get("reply_sessions", {}))
+    if stored.get("last_reply") is not None:
+        data.setdefault("last_reply", stored["last_reply"])
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload integration when options change."""
     await hass.config_entries.async_reload(entry.entry_id)
@@ -137,11 +166,27 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Family Intercom."""
     await _delete_all_temp(hass)
+    await _async_flush_reply_data(hass)
     try:
         frontend.async_remove_panel(hass, PANEL_URL_PATH)
     except Exception:  # noqa: BLE001 - Home Assistant versions differ here.
         _LOGGER.debug("Could not remove Family Intercom panel during unload", exc_info=True)
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def _async_flush_reply_data(hass: HomeAssistant) -> None:
+    """Write reply history/sessions to disk immediately (e.g. on unload/restart)."""
+    data = _data(hass)
+    store: Store | None = data.get("store")
+    if store is None:
+        return
+    await store.async_save(
+        {
+            "reply_history": data.get("reply_history", []),
+            "reply_sessions": data.get("reply_sessions", {}),
+            "last_reply": data.get("last_reply"),
+        }
+    )
 
 
 def _register_services(hass: HomeAssistant, entry: ConfigEntry):
@@ -174,6 +219,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _schedule_volume_restore(hass, options, targets)
         _fire_history(hass, "text", targets, message, emergency)
         _store_reply_context(hass, call, targets, "text", message)
+        await _maybe_push_actionable_reply(hass, options, call, message)
         await _maybe_show_reply_view(hass, options, targets, message)
 
     async def play_recording(call: ServiceCall) -> None:
@@ -212,6 +258,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _schedule_volume_restore(hass, options, targets)
         _fire_history(hass, "recording", targets, "Voice recording", emergency)
         _store_reply_context(hass, call, targets, "recording", "Voice recording")
+        await _maybe_push_actionable_reply(hass, options, call, "Sent you a voice message.")
         _schedule_delete(hass, recording_id, cleanup_seconds)
         await _maybe_show_reply_view(hass, options, targets, "Voice recording")
 
@@ -280,6 +327,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
                 vol.Optional("emergency", default=False): cv.boolean,
                 vol.Optional("sender_session_id"): cv.string,
                 vol.Optional("sender_name"): cv.string,
+                vol.Optional("recipient_notify"): cv.string,
             }
         ),
     )
@@ -296,6 +344,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
                 vol.Optional("emergency", default=False): cv.boolean,
                 vol.Optional("sender_session_id"): cv.string,
                 vol.Optional("sender_name"): cv.string,
+                vol.Optional("recipient_notify"): cv.string,
             }
         ),
     )
@@ -340,6 +389,38 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         ),
     )
 
+    async def handle_notification_action(event) -> None:
+        """Handle a tap on an actionable quick-reply push notification button."""
+        action = str(event.data.get("action", ""))
+        prefix = f"{NOTIFICATION_ACTION_PREFIX}::"
+        if not action.startswith(prefix):
+            return
+        session_id, _, index_raw = action[len(prefix):].partition("::")
+        if not session_id:
+            return
+        session = _data(hass).get("reply_sessions", {}).get(session_id)
+        if not session:
+            return
+        phrases = session.get("reply_phrases_snapshot") or parse_reply_phrases(options.get("reply_phrases"))
+        try:
+            index = int(index_raw)
+        except ValueError:
+            return
+        if not 0 <= index < len(phrases):
+            return
+        await async_send_reply(
+            hass,
+            phrases[index],
+            kind="text",
+            from_name="Push notification",
+            notify_service=options.get("reply_notify_service"),
+            session_id=session_id,
+        )
+
+    remove_notification_listener = hass.bus.async_listen(
+        NOTIFICATION_ACTION_EVENT, handle_notification_action
+    )
+
     def unregister() -> None:
         hass.services.async_remove(DOMAIN, SERVICE_SPEAK_TEXT)
         hass.services.async_remove(DOMAIN, SERVICE_PLAY_RECORDING)
@@ -347,12 +428,29 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         hass.services.async_remove(DOMAIN, SERVICE_REPLY_RECORDING)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_TEMP)
         hass.services.async_remove(DOMAIN, SERVICE_SHOW_REPLY_VIEW)
+        remove_notification_listener()
 
     return unregister
 
 
 REPLY_SESSION_MAX_AGE_SECONDS = 1800
 REPLY_SESSION_MAX_COUNT = 20
+
+
+def _persist_reply_data(hass: HomeAssistant) -> None:
+    """Schedule a debounced save of reply history/sessions to disk."""
+    data = _data(hass)
+    store: Store | None = data.get("store")
+    if store is None:
+        return
+    store.async_delay_save(
+        lambda: {
+            "reply_history": data.get("reply_history", []),
+            "reply_sessions": data.get("reply_sessions", {}),
+            "last_reply": data.get("last_reply"),
+        },
+        2,
+    )
 
 
 def _store_reply_context(
@@ -388,6 +486,7 @@ def _store_reply_context(
     sessions = data.setdefault("reply_sessions", {})
     sessions[session_id] = context
     _prune_reply_sessions(sessions)
+    _persist_reply_data(hass)
 
 
 def _prune_reply_sessions(
@@ -550,6 +649,52 @@ def _fire_history(hass: HomeAssistant, kind: str, targets: list[str], message: s
             "message": message[:240],
             "emergency": emergency,
         },
+    )
+
+
+async def _maybe_push_actionable_reply(
+    hass: HomeAssistant, options: dict[str, Any], call: ServiceCall, message: str
+) -> None:
+    """Push an actionable notification so the recipient can quick-reply without walking to a display or using voice.
+
+    Only fires when the send request included a recipient_notify target
+    (the frontend sets this from the selected station's configured notify
+    service) and a sender_session_id. Buttons are built from the same
+    configured reply phrases used elsewhere, capped to a small number since
+    most notification UIs only render a handful of actions well. The exact
+    phrases used are snapshotted onto the session so a delayed button tap
+    still resolves correctly even if reply_phrases gets reconfigured
+    in the meantime.
+    """
+    service_name = str(call.data.get("recipient_notify") or "").strip()
+    session_id = call.data.get("sender_session_id")
+    if not service_name or not session_id:
+        return
+    if "." in service_name:
+        domain, service = service_name.split(".", 1)
+    else:
+        domain, service = "notify", service_name
+    if domain != "notify" or not service or not hass.services.has_service(domain, service):
+        return
+    phrases = parse_reply_phrases(options.get("reply_phrases"))[:NOTIFICATION_ACTION_MAX_BUTTONS]
+    if not phrases:
+        return
+    session = _data(hass).get("reply_sessions", {}).get(session_id)
+    if session is not None:
+        session["reply_phrases_snapshot"] = phrases
+    actions = [
+        {"action": f"{NOTIFICATION_ACTION_PREFIX}::{session_id}::{index}", "title": phrase}
+        for index, phrase in enumerate(phrases)
+    ]
+    await hass.services.async_call(
+        domain,
+        service,
+        {
+            "title": "Family Intercom",
+            "message": message[:240],
+            "data": {"actions": actions},
+        },
+        blocking=False,
     )
 
 

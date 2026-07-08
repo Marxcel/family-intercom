@@ -26,6 +26,23 @@ speak_text:
       required: false
       selector:
         boolean:
+    sender_session_id:
+      name: Sender session ID
+      description: Lets a reply be routed back to this exact browser/device session instead of "whoever sent the most recent message."
+      required: false
+      selector:
+        text:
+    sender_name:
+      name: Sender name
+      required: false
+      selector:
+        text:
+    recipient_notify:
+      name: Recipient notify service
+      description: A notify.* service (e.g. notify.mobile_app_marxcel) to also push an actionable quick-reply notification to, in parallel with the audio announcement.
+      required: false
+      selector:
+        text:
 
 play_recording:
   name: Play recording
@@ -61,6 +78,23 @@ play_recording:
       required: false
       selector:
         boolean:
+    sender_session_id:
+      name: Sender session ID
+      description: Lets a reply be routed back to this exact browser/device session instead of "whoever sent the most recent message."
+      required: false
+      selector:
+        text:
+    sender_name:
+      name: Sender name
+      required: false
+      selector:
+        text:
+    recipient_notify:
+      name: Recipient notify service
+      description: A notify.* service (e.g. notify.mobile_app_marxcel) to also push an actionable quick-reply notification to, in parallel with the audio recording.
+      required: false
+      selector:
+        text:
 
 delete_temp_files:
   name: Delete temporary files

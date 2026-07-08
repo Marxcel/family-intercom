@@ -18,6 +18,27 @@ def _data(hass: HomeAssistant) -> dict[str, Any]:
     return hass.data.setdefault(DOMAIN, {"recordings": {}, "cleanup_tasks": set()})
 
 
+def _persist(hass: HomeAssistant) -> None:
+    """Schedule a debounced save of reply history/sessions to disk.
+
+    Mirrors the helper of the same purpose in __init__.py; duplicated
+    rather than imported to avoid a circular import between the two
+    modules (__init__.py already imports async_send_reply from here).
+    """
+    data = _data(hass)
+    store = data.get("store")
+    if store is None:
+        return
+    store.async_delay_save(
+        lambda: {
+            "reply_history": data.get("reply_history", []),
+            "reply_sessions": data.get("reply_sessions", {}),
+            "last_reply": data.get("last_reply"),
+        },
+        2,
+    )
+
+
 async def async_send_reply(
     hass: HomeAssistant,
     message: str,
@@ -71,6 +92,7 @@ async def async_send_reply(
     history = list(_data(hass).get("reply_history", []))
     history.insert(0, reply)
     _data(hass)["reply_history"] = history[:50]
+    _persist(hass)
 
     if session_id:
         event_data = {

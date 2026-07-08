@@ -28,6 +28,7 @@ class FamilyIntercomPanel extends HTMLElement {
     this._replyPhrases = [];
     this._inboxReplies = [];
     this._selectedTargets = [];
+    this._selectedStation = null;
     this._displayMode = this._replyMode || localStorage.getItem("familyIntercomDisplayMode") === "1";
     this.innerHTML = `
       <style>
@@ -106,6 +107,14 @@ class FamilyIntercomPanel extends HTMLElement {
         .reply-mode .voice-commands{display:grid;gap:10px}
         .voice-command{padding:14px 16px;border-radius:18px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-cyan) 8%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 45%);font-weight:900}
         @keyframes pulse{50%{transform:scale(1.035);box-shadow:0 0 0 14px rgba(239,68,68,.14),0 18px 38px rgba(255,79,154,.28)}}
+        @keyframes fi-status-flash{0%{color:var(--fi-green);font-weight:900}100%{color:var(--secondary-text-color,#666);font-weight:400}}
+        .status-flash{animation:fi-status-flash 1.6s ease-out}
+        @keyframes fi-card-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        .card{animation:fi-card-in .35s ease-out both}
+        .chip .notify-badge{font-size:.82rem;line-height:1;margin-left:2px}
+        .chip:disabled,.chip[disabled]{opacity:.45;filter:grayscale(.4);cursor:not-allowed}
+        .card::-webkit-scrollbar,.device-list::-webkit-scrollbar,.history-list::-webkit-scrollbar{width:8px}
+        .card::-webkit-scrollbar-thumb,.device-list::-webkit-scrollbar-thumb,.history-list::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--fi-blue),transparent 70%);border-radius:99px}
         @media (max-width:820px){.layout{grid-template-columns:1fr}.hero-content{grid-template-columns:1fr}.device-pill{width:max-content}.card{border-radius:20px}:host{padding:12px}.toolbar{grid-template-columns:1fr}}
         @media (max-width:520px){
           :host{padding:8px 8px calc(88px + env(safe-area-inset-bottom,0px))}
@@ -234,7 +243,10 @@ class FamilyIntercomPanel extends HTMLElement {
     this.querySelector("#saveQuick").addEventListener("click", () => this._saveTypedQuick());
     this.querySelector("#stop").addEventListener("click", () => this._stopRecording());
     this.querySelector("#refresh").addEventListener("click", () => this._updateTargets(true));
-    this.querySelector("#target").addEventListener("change", () => this._saveTarget());
+    this.querySelector("#target").addEventListener("change", () => {
+      this._selectedStation = null;
+      this._saveTarget();
+    });
     this.querySelector("#emergency").addEventListener("click", () => this._sendEmergency());
     this.querySelector("#displayMode").addEventListener("click", () => this._toggleDisplayMode());
     this.querySelector("#deviceSearch").addEventListener("input", () => this._renderDeviceList(this._players()));
@@ -446,6 +458,7 @@ class FamilyIntercomPanel extends HTMLElement {
       button.textContent = `${preset.name} (${preset.targets.length})`;
       button.addEventListener("click", () => {
         this._selectedTargets = preset.targets;
+        this._selectedStation = null;
         localStorage.setItem("familyIntercomPreset", preset.name);
         this._status(`Targeting ${preset.name}.`);
         this._renderStationChips(players);
@@ -473,10 +486,16 @@ class FamilyIntercomPanel extends HTMLElement {
       const targets = (station.targets || []).filter(target => available.has(target));
       const button = document.createElement("button");
       button.className = `chip${this._sameTargets(this._selectedTargets, targets) ? " active" : ""}`;
-      button.textContent = `${station.name}${targets.length ? "" : " (offline)"}`;
+      button.title = station.notify
+        ? `${station.name}: replies can also be sent as a quick-reply push notification`
+        : station.name;
+      button.innerHTML = `${this._escape(station.name)}${targets.length ? "" : " (offline)"}${
+        station.notify ? ' <span class="notify-badge" aria-label="Push quick-reply enabled">🔔</span>' : ""
+      }`;
       button.disabled = !targets.length;
       button.addEventListener("click", () => {
         this._selectedTargets = targets;
+        this._selectedStation = station;
         localStorage.setItem("familyIntercomStation", station.id || station.name);
         this._status(`Targeting station ${station.name}.`);
         this._renderStationChips(players);
@@ -522,6 +541,7 @@ class FamilyIntercomPanel extends HTMLElement {
       button.addEventListener("click", () => {
         this.querySelector("#target").value = player.entityId;
         this._selectedTargets = [player.entityId];
+        this._selectedStation = null;
         this._saveTarget();
         this._renderStationChips(players);
         this._renderPresetChips(players);
@@ -749,6 +769,7 @@ class FamilyIntercomPanel extends HTMLElement {
   _selectPlayer(player, players = this._players()) {
     this.querySelector("#target").value = player.entityId;
     this._selectedTargets = [player.entityId];
+    this._selectedStation = null;
     this._saveTarget();
     this._rememberTarget(player.entityId);
     this._renderFavoriteChips(players);
@@ -821,9 +842,16 @@ class FamilyIntercomPanel extends HTMLElement {
     }
   }
 
-  _status(text) {
+  _status(text, success = false) {
     const status = this.querySelector("#status");
-    if (status) status.textContent = text;
+    if (!status) return;
+    status.textContent = text;
+    status.classList.remove("status-flash");
+    if (success) {
+      // Re-trigger the CSS animation even if the same class was just removed.
+      void status.offsetWidth;
+      status.classList.add("status-flash");
+    }
   }
 
   _updateHero() {
@@ -851,19 +879,21 @@ class FamilyIntercomPanel extends HTMLElement {
         message,
         from_name: "Google display",
       });
-      this._status(`Reply sent to ${this._replyContext.sender_name || "original sender"}.`);
+      this._status(`Reply sent to ${this._replyContext.sender_name || "original sender"}.`, true);
       return;
     }
     if (!targets.length) return this._status("Select a target first.");
+    const recipientNotify = !emergency && this._selectedStation?.notify;
     await this._hass.callService("family_intercom", "speak_text", {
       target_entity: this._targetPayload(targets),
       message,
       emergency,
       sender_session_id: this._sessionId(),
       sender_name: this._senderName(),
+      ...(recipientNotify ? { recipient_notify: recipientNotify } : {}),
     });
     this._addHistory("Text", targets, message, emergency);
-    this._status(`${emergency ? "Emergency sent" : "Sent"} to ${this._targetLabel(targets)}.`);
+    this._status(`${emergency ? "Emergency sent" : "Sent"} to ${this._targetLabel(targets)}.`, true);
   }
 
   async _sendText() {
@@ -953,7 +983,7 @@ class FamilyIntercomPanel extends HTMLElement {
         filename: blob.type?.includes("mp4") ? "intercom.m4a" : "intercom.webm",
         from_name: "Google display",
       });
-      this._status(`Voice reply sent to ${this._replyContext.sender_name || "original sender"}.`);
+      this._status(`Voice reply sent to ${this._replyContext.sender_name || "original sender"}.`, true);
       return;
     }
     await this._hass.callService("family_intercom", "play_recording", {
@@ -963,9 +993,10 @@ class FamilyIntercomPanel extends HTMLElement {
       filename: blob.type?.includes("mp4") ? "intercom.m4a" : "intercom.webm",
       sender_session_id: this._sessionId(),
       sender_name: this._senderName(),
+      ...(this._selectedStation?.notify ? { recipient_notify: this._selectedStation.notify } : {}),
     });
     this._addHistory("Voice", targets, "Voice recording");
-    this._status(`Voice message sent to ${this._targetLabel(targets)}.`);
+    this._status(`Voice message sent to ${this._targetLabel(targets)}.`, true);
   }
 
   _toggleDisplayMode() {

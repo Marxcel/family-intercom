@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.helpers import selector
 
 from .const import (
     DEFAULT_AUTO_REPLY_VIEW_ENABLED,
@@ -26,6 +29,31 @@ from .const import (
     DEFAULT_VOLUME_LEVEL,
     DOMAIN,
 )
+from .helpers import parse_stations
+
+
+def _validate(user_input: dict) -> dict:
+    """Validate cross-field rules that a plain selector can't express on its own.
+
+    Returns a dict of field -> error key, empty if everything is valid.
+    """
+    errors: dict[str, str] = {}
+    if user_input.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS) < 15:
+        errors["cleanup_seconds"] = "cleanup_too_short"
+
+    stations_raw = str(user_input.get("stations_json") or "").strip()
+    if stations_raw:
+        try:
+            parsed = json.loads(stations_raw)
+        except (TypeError, ValueError):
+            errors["stations_json"] = "invalid_json"
+        else:
+            if not isinstance(parsed, list):
+                errors["stations_json"] = "invalid_json"
+            elif parsed and not parse_stations(stations_raw):
+                # Valid JSON, but every entry was missing a usable name/targets pair.
+                errors["stations_json"] = "invalid_stations"
+    return errors
 
 
 class FamilyIntercomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -40,10 +68,8 @@ class FamilyIntercomConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         errors = {}
         if user_input is not None:
-            cleanup_seconds = user_input.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS)
-            if cleanup_seconds < 15:
-                errors["cleanup_seconds"] = "cleanup_too_short"
-            else:
+            errors = _validate(user_input)
+            if not errors:
                 return self.async_create_entry(title="Family Intercom", data=user_input)
 
         schema = _options_schema({})
@@ -67,9 +93,8 @@ class FamilyIntercomOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         current = {**self._config_entry.data, **self._config_entry.options}
         if user_input is not None:
-            if user_input.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS) < 15:
-                errors["cleanup_seconds"] = "cleanup_too_short"
-            else:
+            errors = _validate(user_input)
+            if not errors:
                 return self.async_create_entry(title="", data=user_input)
 
         schema = _options_schema(current)
@@ -77,25 +102,70 @@ class FamilyIntercomOptionsFlow(config_entries.OptionsFlow):
 
 
 def _options_schema(current):
-    """Return shared options schema."""
+    """Return shared options schema, using UI-friendly selectors instead of raw typed text."""
     return vol.Schema(
         {
-            vol.Optional("tts_entity", default=current.get("tts_entity", DEFAULT_TTS_ENTITY)): str,
-            vol.Optional("cleanup_seconds", default=current.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS)): vol.Coerce(int),
-            vol.Optional("show_sidebar", default=current.get("show_sidebar", DEFAULT_SHOW_SIDEBAR)): bool,
-            vol.Optional("chime_enabled", default=current.get("chime_enabled", DEFAULT_CHIME_ENABLED)): bool,
-            vol.Optional("volume_enabled", default=current.get("volume_enabled", DEFAULT_VOLUME_ENABLED)): bool,
-            vol.Optional("volume_level", default=current.get("volume_level", DEFAULT_VOLUME_LEVEL)): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=1.0)),
-            vol.Optional("restore_seconds", default=current.get("restore_seconds", DEFAULT_RESTORE_SECONDS)): vol.Coerce(int),
-            vol.Optional("quiet_hours_enabled", default=current.get("quiet_hours_enabled", DEFAULT_QUIET_HOURS_ENABLED)): bool,
-            vol.Optional("quiet_start", default=current.get("quiet_start", DEFAULT_QUIET_START)): str,
-            vol.Optional("quiet_end", default=current.get("quiet_end", DEFAULT_QUIET_END)): str,
-            vol.Optional("auto_reply_view_enabled", default=current.get("auto_reply_view_enabled", DEFAULT_AUTO_REPLY_VIEW_ENABLED)): bool,
-            vol.Optional("reply_dashboard_path", default=current.get("reply_dashboard_path", DEFAULT_REPLY_DASHBOARD_PATH)): str,
-            vol.Optional("reply_view_path", default=current.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH)): str,
-            vol.Optional("reply_cast_delay_seconds", default=current.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)): vol.Coerce(int),
-            vol.Optional("reply_notify_service", default=current.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE)): str,
-            vol.Optional("reply_phrases", default=current.get("reply_phrases", DEFAULT_REPLY_PHRASES)): str,
-            vol.Optional("stations_json", default=current.get("stations_json", DEFAULT_STATIONS_JSON)): str,
+            vol.Optional(
+                "tts_entity", default=current.get("tts_entity", DEFAULT_TTS_ENTITY)
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="tts")),
+            vol.Optional(
+                "cleanup_seconds", default=current.get("cleanup_seconds", DEFAULT_CLEANUP_SECONDS)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=15, max=600, step=5, mode="box", unit_of_measurement="seconds")
+            ),
+            vol.Optional(
+                "show_sidebar", default=current.get("show_sidebar", DEFAULT_SHOW_SIDEBAR)
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "chime_enabled", default=current.get("chime_enabled", DEFAULT_CHIME_ENABLED)
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "volume_enabled", default=current.get("volume_enabled", DEFAULT_VOLUME_ENABLED)
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "volume_level", default=current.get("volume_level", DEFAULT_VOLUME_LEVEL)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0.0, max=1.0, step=0.01, mode="slider")
+            ),
+            vol.Optional(
+                "restore_seconds", default=current.get("restore_seconds", DEFAULT_RESTORE_SECONDS)
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0, max=120, step=1, mode="box", unit_of_measurement="seconds")
+            ),
+            vol.Optional(
+                "quiet_hours_enabled", default=current.get("quiet_hours_enabled", DEFAULT_QUIET_HOURS_ENABLED)
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "quiet_start", default=current.get("quiet_start", DEFAULT_QUIET_START)
+            ): selector.TimeSelector(),
+            vol.Optional(
+                "quiet_end", default=current.get("quiet_end", DEFAULT_QUIET_END)
+            ): selector.TimeSelector(),
+            vol.Optional(
+                "auto_reply_view_enabled",
+                default=current.get("auto_reply_view_enabled", DEFAULT_AUTO_REPLY_VIEW_ENABLED),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                "reply_dashboard_path", default=current.get("reply_dashboard_path", DEFAULT_REPLY_DASHBOARD_PATH)
+            ): selector.TextSelector(),
+            vol.Optional(
+                "reply_view_path", default=current.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH)
+            ): selector.TextSelector(),
+            vol.Optional(
+                "reply_cast_delay_seconds",
+                default=current.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=10, max=180, step=5, mode="box", unit_of_measurement="seconds")
+            ),
+            vol.Optional(
+                "reply_notify_service",
+                default=current.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE),
+            ): selector.TextSelector(),
+            vol.Optional(
+                "reply_phrases", default=current.get("reply_phrases", DEFAULT_REPLY_PHRASES)
+            ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
+            vol.Optional(
+                "stations_json", default=current.get("stations_json", DEFAULT_STATIONS_JSON)
+            ): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
         }
     )

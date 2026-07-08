@@ -31,6 +31,16 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.7.0
+
+Feature release:
+
+- **Reply history and reply sessions now survive restarts.** Previously everything lived only in memory, so a Home Assistant restart (including the kind that happens right after a HACS update) silently wiped reply history and any in-flight reply sessions. Both are now saved to disk and reloaded automatically.
+- **Actionable push-notification quick replies.** A station can now have its `notify` field actually used: when you send a message to a station that has one configured, the recipient also gets a push notification with tappable quick-reply buttons (built from your configured reply phrases) that reply immediately - no need to walk up to a display or use a voice command. This is the `notify` field that stations already supported in the config but that wasn't wired up to anything until now.
+- **Friendlier options page.** Settings are now proper pickers instead of raw text: an entity dropdown for the TTS entity, a slider for announcement volume, number boxes with sensible min/max for all the seconds fields, and real time pickers for quiet hours. Reply phrases and stations JSON are now multi-line text areas instead of single-line fields.
+- **Real validation for stations JSON.** Invalid JSON or a station missing a usable name/targets now shows a clear error on the options page instead of silently doing nothing.
+- Small panel polish: a brief confirmation flash when a message sends successfully, a bell badge on station chips that have quick-reply notifications configured, clearer graying-out of offline stations, and a subtle fade-in for cards.
+
 ### 0.6.1
 
 Bugfix release:
@@ -107,7 +117,9 @@ Stations make Family Intercom feel like a house/building intercom instead of a r
 ]
 ```
 
-The panel shows stations as first-class targets. If a station's target media player is unavailable, the station shows as offline.
+The panel shows stations as first-class targets. If a station's target media player is unavailable, the station shows as offline (grayed out and disabled).
+
+**The `notify` field is now used.** When you send a message to a station that has `notify` set, Family Intercom also pushes an actionable notification to that service at the same time as the audio announcement. That notification includes tappable quick-reply buttons built from your configured [reply phrases](#reply-phrases) (up to 3) - tapping one replies immediately, the same as if the recipient had used a voice command or the on-screen reply view. This is useful when the recipient has a phone: they can reply without walking up to the display at all. Stations with a notify service configured show a 🔔 badge on their chip in the panel.
 
 ## Reply phrases
 
@@ -116,6 +128,8 @@ Configure fixed reply phrases in options using `|` separators:
 ```text
 Yes.|No.|Okay.|I am coming.|Give me five minutes.|Call me please.
 ```
+
+The first 3 of these are also used as the quick-reply buttons on actionable push notifications (see [Stations](#stations) above).
 
 These phrases appear in the panel quick replies and can also generate additional voice-friendly reply switch entities when Home Assistant reloads the integration.
 
@@ -205,10 +219,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.6.1 or newer, the module path is:
+For version 0.7.0 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.6.1
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.0
 ```
 
 Manual service:
@@ -244,7 +258,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.6.1
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.0
 ```
 
 3. Add a manual card to any dashboard:
