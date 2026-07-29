@@ -780,7 +780,7 @@ async def _register_frontend(hass: HomeAssistant, show_sidebar: bool):
             config={
                 "_panel_custom": {
                     "name": "family-intercom-panel",
-                    "js_url": f"{STATIC_URL}/{FRONTEND_MODULE}",
+                    "js_url": f"{STATIC_URL}/{FRONTEND_MODULE}?v={INTEGRATION_VERSION}",
                     "embed_iframe": False,
                     "trust_external_script": False,
                 }

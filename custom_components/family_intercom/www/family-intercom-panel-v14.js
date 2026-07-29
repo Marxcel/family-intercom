@@ -271,10 +271,17 @@ class FamilyIntercomPanel extends HTMLElement {
   }
 
   async _fetchJson(path) {
-    const fetcher = this._hass?.fetchWithAuth
-      ? this._hass.fetchWithAuth(path, { cache: "no-store" })
-      : fetch(path, { cache: "no-store", credentials: "same-origin" });
-    const response = await fetcher;
+    if (this._hass?.callApi) {
+      return this._hass.callApi("GET", path.replace(/^\/api\//, ""));
+    }
+    const token = this._hass?.auth?.data?.access_token || window.hassConnection?.conn?.options?.auth?.data?.access_token;
+    const response = this._hass?.fetchWithAuth
+      ? await this._hass.fetchWithAuth(path, { cache: "no-store" })
+      : await fetch(path, {
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
     const body = await response.text();
     if (!response.ok) {
       throw new Error(`${response.status}: ${body || response.statusText || "Request failed"}`);
