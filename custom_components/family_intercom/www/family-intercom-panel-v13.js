@@ -270,11 +270,26 @@ class FamilyIntercomPanel extends HTMLElement {
     return Boolean(this._config?.reply_mode) || window.location.pathname.includes("family-intercom-reply");
   }
 
+  async _fetchJson(path) {
+    const fetcher = this._hass?.fetchWithAuth
+      ? this._hass.fetchWithAuth(path, { cache: "no-store" })
+      : fetch(path, { cache: "no-store", credentials: "same-origin" });
+    const response = await fetcher;
+    const body = await response.text();
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${body || response.statusText || "Request failed"}`);
+    }
+    try {
+      return body ? JSON.parse(body) : {};
+    } catch (error) {
+      throw new Error(`Invalid JSON from ${path}: ${error.message || error}`);
+    }
+  }
+
   async _loadFamilyConfig() {
     this._familyConfigRequested = true;
     try {
-      const response = await fetch("/api/family_intercom/config", { cache: "no-store" });
-      const config = await response.json();
+      const config = await this._fetchJson("/api/family_intercom/config");
       this._stations = Array.isArray(config.stations) ? config.stations : [];
       this._replyPhrases = Array.isArray(config.reply_phrases) ? config.reply_phrases : [];
       this._renderStationChips(this._players());
@@ -287,8 +302,7 @@ class FamilyIntercomPanel extends HTMLElement {
 
   async _loadInbox() {
     try {
-      const response = await fetch("/api/family_intercom/inbox", { cache: "no-store" });
-      const inbox = await response.json();
+      const inbox = await this._fetchJson("/api/family_intercom/inbox");
       this._inboxReplies = Array.isArray(inbox.replies) ? inbox.replies : [];
       this._renderInbox();
     } catch {
@@ -320,8 +334,7 @@ class FamilyIntercomPanel extends HTMLElement {
   async _loadReplyContext() {
     this._replyContextRequested = true;
     try {
-      const response = await fetch("/api/family_intercom/reply_context", { cache: "no-store" });
-      const context = await response.json();
+      const context = await this._fetchJson("/api/family_intercom/reply_context");
       this._replyContext = context?.session_id ? context : null;
       const banner = this.querySelector("#replyBanner");
       if (this._replyContext) {

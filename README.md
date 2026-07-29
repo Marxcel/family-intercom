@@ -31,6 +31,13 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.7.2
+
+Bugfix release:
+
+- Fixed the panel config loader to use Home Assistant's authenticated fetch helper. This prevents the panel from trying to parse `403: Forbidden` responses as JSON and showing `Could not load intercom config: Unexpected non-whitespace character after JSON`.
+- Updated the frontend resource cache-buster to `0.7.2`.
+
 ### 0.7.1
 
 Maintenance release:
@@ -226,10 +233,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.7.1 or newer, the module path is:
+For version 0.7.2 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.7.1
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.2
 ```
 
 Manual service:
@@ -265,7 +272,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v13.js?v=0.7.1
+/family_intercom_static/family-intercom-panel-v13.js?v=0.7.2
 ```
 
 3. Add a manual card to any dashboard:
