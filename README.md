@@ -1,6 +1,8 @@
 # Family Intercom for Home Assistant
 
-Family Intercom adds a simple household intercom panel to Home Assistant.
+Family Intercom is a Home Assistant HACS integration that turns your existing media players, smart displays, speakers, tablets, and browser dashboards into a household intercom. It sends typed announcements or temporary voice recordings to selected devices or named stations, tracks available targets live, and supports reply workflows through Home Assistant events, mobile notifications, and voice-friendly switches.
+
+Short description: send typed or recorded intercom announcements to Home Assistant media players and stations, with reply history, quick replies, live device detection, and optional Google/Nest display reply views.
 
 It can:
 
@@ -30,6 +32,14 @@ It can:
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
 ## Changelog
+
+### 0.7.4
+
+Metadata release:
+
+- Added a precise GitHub repository description for HACS/GitHub listings.
+- Clarified the README opening summary so users immediately understand what the integration does.
+- Updated the frontend resource cache-buster to `0.7.4`.
 
 ### 0.7.3
 
@@ -241,10 +251,10 @@ Family Intercom normally registers its card resource automatically. If the displ
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.7.3 or newer, the module path is:
+For version 0.7.4 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v14.js?v=0.7.3
+/family_intercom_static/family-intercom-panel-v14.js?v=0.7.4
 ```
 
 Manual service:
@@ -280,7 +290,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v14.js?v=0.7.3
+/family_intercom_static/family-intercom-panel-v14.js?v=0.7.4
 ```
 
 3. Add a manual card to any dashboard:
