@@ -95,6 +95,9 @@
         .badge{font-size:.72rem;font-weight:900;padding:5px 8px;border-radius:999px;background:rgba(74,222,128,.14);color:color-mix(in srgb,var(--fi-green),var(--primary-text-color,#111) 25%)}
         .favorite{padding:8px 10px;border-radius:999px;background:transparent;color:var(--secondary-text-color,#666);box-shadow:none;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 50%)}
         .favorite.active{background:linear-gradient(135deg,#f59e0b,#f97316);color:white;border-color:transparent}
+        .target-chip-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-width:0}
+        .target-chip-row .chip{width:100%;justify-content:flex-start;text-align:left}
+        .target-chip-row .favorite{min-width:54px;height:44px;display:grid;place-items:center}
         .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
         .tiny{font-size:.76rem;color:var(--secondary-text-color,#666);font-weight:800}
         .inline-form{display:grid;grid-template-columns:1fr auto;gap:8px}
@@ -153,6 +156,7 @@
           #stationChips,#favoriteChips,#targetChips{display:grid;grid-template-columns:1fr;gap:8px}
           .chip{width:100%;justify-content:center;padding:11px 10px;font-size:.93rem}
           #targetChips .chip{justify-content:flex-start;text-align:left}
+          .target-chip-row{grid-template-columns:minmax(0,1fr) 54px}
           .device-list,.history-list{max-height:none;overflow:visible;padding-right:0}
           .device{grid-template-columns:auto minmax(0,1fr) auto;gap:9px}
           .device .favorite{grid-column:1 / -1;width:100%}
@@ -234,11 +238,10 @@
               </div>
             </div>
             <div class="record-pad">
-              <button id="record" class="record-circle" title="Tap to start recording, tap again to stop and send">Mic</button>
+              <button id="record" class="record-circle" title="Tap once to start recording. Tap again to stop and send.">Mic</button>
               <h2 id="recordTitle">Tap to record</h2>
               <div class="tiny" id="recordTimer">00:00</div>
-              <p class="mini">Tap Mic to start recording. Tap the big Stop button to stop and automatically send. Clips are temporary and deleted after playback.</p>
-              <button id="stop" class="danger" disabled>Stop and send recording</button>
+              <p class="mini">Tap Mic to start recording. Tap the same big button again to stop and automatically send. Clips are temporary and deleted after playback.</p>
             </div>
             <section class="card" id="diagnosticsPanel">
               <div class="section-head">
@@ -279,7 +282,6 @@
     `;
     this.querySelector("#sendText").addEventListener("click", () => this._sendText());
     this.querySelector("#saveQuick").addEventListener("click", () => this._saveTypedQuick());
-    this.querySelector("#stop").addEventListener("click", () => this._stopRecording());
     this.querySelector("#refresh").addEventListener("click", () => this._updateTargets(true));
     this.querySelector("#target").addEventListener("change", () => {
       this._selectedStation = null;
@@ -641,7 +643,10 @@
     const container = this.querySelector("#targetChips");
     if (!container) return;
     container.replaceChildren();
+    const favorites = this._favorites();
     for (const player of players.slice(0, 10)) {
+      const row = document.createElement("div");
+      row.className = "target-chip-row";
       const button = document.createElement("button");
       button.className = `chip${this._sameTargets(this._selectedTargets, [player.entityId]) ? " active" : ""}`;
       button.textContent = `${player.icon} ${player.name}`;
@@ -655,7 +660,20 @@
         this._renderTargetChips(players);
         this._renderQuickMessages();
       });
-      container.append(button);
+      const favorite = document.createElement("button");
+      favorite.className = `favorite${favorites.includes(player.entityId) ? " active" : ""}`;
+      favorite.title = favorites.includes(player.entityId) ? "Remove from favorites" : "Save to favorites";
+      favorite.textContent = favorites.includes(player.entityId) ? "★" : "☆";
+      favorite.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._toggleFavorite(player.entityId);
+        this._renderFavoriteChips(players);
+        this._renderTargetChips(players);
+        this._renderDeviceList(players);
+      });
+      row.append(button, favorite);
+      container.append(row);
     }
   }
 
@@ -1094,9 +1112,8 @@
       this.querySelector("#record").classList.add("recording");
       this.querySelector("#record").textContent = "Stop";
       this.querySelector("#recordTitle").textContent = "Recording...";
-      this.querySelector("#stop").disabled = false;
       this._startRecordTimer();
-      this._status("Recording. Tap the big Stop button to send.");
+      this._status("Recording. Tap the same big Stop button to send.");
     } catch (error) {
       this._status(`Microphone unavailable: ${error.message || error}`);
     }
@@ -1107,7 +1124,6 @@
     this.querySelector("#record").classList.remove("recording");
     this.querySelector("#record").textContent = "Mic";
     this.querySelector("#recordTitle").textContent = "Tap to record";
-    this.querySelector("#stop").disabled = true;
     this._stopRecordTimer();
   }
 

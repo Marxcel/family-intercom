@@ -35,6 +35,14 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.8.1
+
+Bugfix release:
+
+- Removed the separate "Stop and send recording" button from the panel. The large Mic button is now the single recording control: tap Mic to start recording, then tap the same large Stop button to stop and send.
+- Added visible star buttons beside the individual device chips so devices can be saved to Favorites without scrolling down into the Available now list.
+- Updated the frontend module to `family-intercom-panel-v16.js` and the cache-buster to `0.8.1`.
+
 ### 0.8.0
 
 Organization and watch release:
@@ -133,7 +141,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Chime:** A short generated WAV chime can play before messages. This is enabled by default.
 - **Volume handling:** Optional temporary volume control lets you set the target volume before playback and restore previous volume after a delay.
 - **Send history:** The last sent messages are stored in the browser's local storage, not in Home Assistant.
-- **Mic toggle recording:** Tap Mic to start recording, then tap the large Stop button to stop and automatically send. The smaller stop button remains as a backup.
+- **Mic toggle recording:** Tap Mic to start recording, then tap the same large Stop button to stop and automatically send. No separate stop button is needed.
 - **Emergency broadcast:** Sends a priority message to every currently available media player and bypasses quiet hours.
 - **Emergency confirmation:** The emergency button requires a second press within five seconds to prevent accidental whole-house announcements.
 - **Quiet hours:** Normal announcements can be blocked during configured times.
@@ -300,15 +308,15 @@ If your reply view URL is `/123-nice-st/family-intercom-reply`, then:
 Family Intercom normally registers its card resource automatically. If the display plays the message and then shows only a dark Cast screen, verify this resource exists in **Settings > Dashboards > Resources**:
 
 ```text
-/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
 ```
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.8.0 or newer, the module path is:
+For version 0.8.1 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
 ```
 
 Manual service:
@@ -344,7 +352,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
 ```
 
 3. Add a manual card to any dashboard:
@@ -375,6 +383,7 @@ cards:
 ## Notes
 
 Voice recordings are stored only as temporary files under Home Assistant's temporary directory and are deleted automatically after the configured cleanup delay.
+
 
 
 
