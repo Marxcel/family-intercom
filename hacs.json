@@ -1,5 +1,6 @@
 {
   "name": "Family Intercom",
+  "description": "A Home Assistant household intercom for typed and voice announcements, stations, quick replies, reply history, live media-player detection, and watch-friendly notifications.",
   "render_readme": true,
   "domains": ["family_intercom"],
   "homeassistant": "2026.7.0"

@@ -35,6 +35,14 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.8.2
+
+Metadata release:
+
+- Added the precise Family Intercom description directly to `hacs.json` so HACS has a repo-local description to ingest.
+- Kept the GitHub repository description set to: "Home Assistant HACS integration for typed and voice household intercom announcements, stations, quick replies, reply history, and watch-friendly notifications."
+- Updated the integration version to `0.8.2` so HACS gets a fresh metadata update.
+
 ### 0.8.1
 
 Bugfix release:
@@ -308,15 +316,15 @@ If your reply view URL is `/123-nice-st/family-intercom-reply`, then:
 Family Intercom normally registers its card resource automatically. If the display plays the message and then shows only a dark Cast screen, verify this resource exists in **Settings > Dashboards > Resources**:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.2
 ```
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.8.1 or newer, the module path is:
+For version 0.8.2 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.2
 ```
 
 Manual service:
@@ -352,7 +360,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.1
+/family_intercom_static/family-intercom-panel-v16.js?v=0.8.2
 ```
 
 3. Add a manual card to any dashboard:
@@ -383,6 +391,7 @@ cards:
 ## Notes
 
 Voice recordings are stored only as temporary files under Home Assistant's temporary directory and are deleted automatically after the configured cleanup delay.
+
 
 
 
