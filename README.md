@@ -35,6 +35,15 @@ Google/Nest displays are reliable as output devices. Phones, tablets, wall table
 
 ## Changelog
 
+### 0.8.4
+
+Mobile layout release:
+
+- Fixed the Family Intercom panel being clipped inside the Home Assistant mobile app by making the panel its own full-height scroll container on phones.
+- Added larger mobile bottom safe-area padding so Android navigation and Home Assistant app controls do not cover the lower dashboard controls.
+- Compressed the mobile hero/header so the actual intercom dashboard controls are visible sooner.
+- Updated the frontend module to `family-intercom-panel-v17.js` and the cache-buster to `0.8.4`.
+
 ### 0.8.3
 
 Branding release:
@@ -326,15 +335,15 @@ If your reply view URL is `/123-nice-st/family-intercom-reply`, then:
 Family Intercom normally registers its card resource automatically. If the display plays the message and then shows only a dark Cast screen, verify this resource exists in **Settings > Dashboards > Resources**:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.3
+/family_intercom_static/family-intercom-panel-v17.js?v=0.8.4
 ```
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.8.3 or newer, the module path is:
+For version 0.8.4 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.3
+/family_intercom_static/family-intercom-panel-v17.js?v=0.8.4
 ```
 
 Manual service:
@@ -370,7 +379,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v16.js?v=0.8.3
+/family_intercom_static/family-intercom-panel-v17.js?v=0.8.4
 ```
 
 3. Add a manual card to any dashboard:
@@ -401,6 +410,7 @@ cards:
 ## Notes
 
 Voice recordings are stored only as temporary files under Home Assistant's temporary directory and are deleted automatically after the configured cleanup delay.
+
 
 
 
