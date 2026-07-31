@@ -11,7 +11,7 @@ from aiohttp import web
 
 from homeassistant.components.http import HomeAssistantView
 
-from .const import DOMAIN
+from .const import DOMAIN, FRONTEND_MODULE, INTEGRATION_VERSION
 from .helpers import parse_reply_phrases, parse_stations
 
 
@@ -87,6 +87,51 @@ class FamilyIntercomInboxView(HomeAssistantView):
         """Return latest replies."""
         hass = request.app["hass"]
         return web.json_response({"replies": hass.data.get(DOMAIN, {}).get("reply_history", [])[:50]})
+
+
+class FamilyIntercomDiagnosticsView(HomeAssistantView):
+    """Return lightweight panel diagnostics for troubleshooting."""
+
+    url = f"/api/{DOMAIN}/diagnostics"
+    name = f"api:{DOMAIN}:diagnostics"
+    requires_auth = True
+
+    async def get(self, request):
+        """Return current integration and media-player state summary."""
+        hass = request.app["hass"]
+        data = hass.data.get(DOMAIN, {})
+        options = data.get("options") or {}
+        media_players = [state for state in hass.states.async_all("media_player")]
+        hidden_states = {"unavailable", "unknown"}
+        visible = [state for state in media_players if state.state not in hidden_states]
+        states: dict[str, int] = {}
+        for state in media_players:
+            states[state.state] = states.get(state.state, 0) + 1
+        stations = parse_stations(options.get("stations_json"))
+        available_entities = {state.entity_id for state in visible}
+        online_stations = [
+            station for station in stations if any(target in available_entities for target in station.get("targets", []))
+        ]
+        return web.json_response(
+            {
+                "version": INTEGRATION_VERSION,
+                "frontend_module": FRONTEND_MODULE,
+                "media_players_total": len(media_players),
+                "media_players_visible": len(visible),
+                "media_players_hidden": len(media_players) - len(visible),
+                "media_player_states": states,
+                "stations_total": len(stations),
+                "stations_online": len(online_stations),
+                "reply_sessions": len(data.get("reply_sessions", {})),
+                "reply_history": len(data.get("reply_history", [])),
+                "temporary_recordings": len(data.get("recordings", {})),
+                "watch_notify_configured": bool(str(options.get("watch_notify_service", "")).strip()),
+                "reply_notify_configured": bool(str(options.get("reply_notify_service", "")).strip()),
+                "auto_reply_view_enabled": bool(options.get("auto_reply_view_enabled")),
+                "quiet_hours_enabled": bool(options.get("quiet_hours_enabled")),
+                "sidebar_enabled": bool(options.get("show_sidebar")),
+            }
+        )
 
 
 def _chime_wav() -> bytes:

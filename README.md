@@ -1,4 +1,4 @@
-# Family Intercom for Home Assistant
+﻿# Family Intercom for Home Assistant
 
 Family Intercom is a Home Assistant HACS integration that turns your existing media players, smart displays, speakers, tablets, and browser dashboards into a household intercom. It sends typed announcements or temporary voice recordings to selected devices or named stations, tracks available targets live, and supports reply workflows through Home Assistant events, mobile notifications, and voice-friendly switches.
 
@@ -17,7 +17,7 @@ It can:
 - Play an optional chime before announcements.
 - Optionally set announcement volume and restore the previous volume afterward.
 - Keep a local send history in the browser for quick repeats.
-- Use mobile push-to-talk by holding the microphone button and releasing to send.
+- Use a simple Mic toggle: tap Mic to record, tap Stop to send.
 - Send an emergency broadcast to every currently available media player.
 - Respect quiet hours for normal messages while allowing emergency broadcasts.
 - Show per-room quick messages based on the selected target.
@@ -28,10 +28,26 @@ It can:
 - Save custom quick messages directly from the panel.
 - Require a second confirmation tap before emergency broadcasts.
 - Optionally cast a reply dashboard view to Google/Nest displays after an intercom message.
+- Send compact actionable notifications to a phone/watch notify service for Samsung Galaxy Watch or Wear OS use.
+- Use a diagnostics screen to confirm the version, frontend module, available devices, stations, reply sessions, and watch setup status.
 
 Google/Nest displays are reliable as output devices. Phones, tablets, wall tablets, or normal browsers are the reliable recording/input devices because Google/Nest display microphones are controlled by Google Assistant and are not generally available to Home Assistant web panels.
 
 ## Changelog
+
+### 0.8.0
+
+Organization and watch release:
+
+- Added a cleaner, station-first panel layout with section shortcuts for Send, Replies, Devices, and Diagnostics.
+- Added richer station cards. Station JSON can now include optional `description`, `icon`, `color`, and `mode`/`type` fields so stations can look and read like real intercom points instead of raw entity chips.
+- Added a visible recording timer so users can see how long a voice clip has been recording.
+- Added explicit send modes: Normal, Quiet, Watch, and Emergency. Watch mode sends a compact notification through the configured watch notify service.
+- Added `watch_notify_service` to the integration options page for Samsung Galaxy Watch / Wear OS workflows through the Home Assistant Companion App notification pipeline.
+- Added the `family_intercom.watch_prompt` service for automations, scripts, dashboards, and watch actions.
+- Added an authenticated diagnostics API and panel diagnostics screen showing integration version, active frontend module, visible/hidden media players, station availability, reply counts, temporary recordings, and watch/reply configuration status.
+- Improved mobile organization so the panel is easier to use from phones, tablets, wall panels, and display dashboards.
+- Updated the frontend module to `family-intercom-panel-v15.js` and the cache-buster to `0.8.0`.
 
 ### 0.7.5
 
@@ -117,7 +133,7 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Chime:** A short generated WAV chime can play before messages. This is enabled by default.
 - **Volume handling:** Optional temporary volume control lets you set the target volume before playback and restore previous volume after a delay.
 - **Send history:** The last sent messages are stored in the browser's local storage, not in Home Assistant.
-- **Push-to-talk:** Hold the microphone button on a phone/tablet, then release to send. You can also tap once and use the Stop button.
+- **Mic toggle recording:** Tap Mic to start recording, then tap the large Stop button to stop and automatically send. The smaller stop button remains as a backup.
 - **Emergency broadcast:** Sends a priority message to every currently available media player and bypasses quiet hours.
 - **Emergency confirmation:** The emergency button requires a second press within five seconds to prevent accidental whole-house announcements.
 - **Quiet hours:** Normal announcements can be blocked during configured times.
@@ -128,6 +144,8 @@ During setup, you can disable the sidebar entry if you only want to use the inte
 - **Display mode:** Enlarges controls and reduces clutter for Google/Nest displays, tablets, and wall dashboards.
 - **Reply view casting:** Optionally calls `cast.show_lovelace_view` after a message so a Google/Nest display can show a reply dashboard.
 - **Cast card resource registration:** The integration registers its Lovelace card resource so Google/Nest Cast receivers can load the reply dashboard instead of showing a blank/dark screen.
+- **Watch support:** Configure `watch_notify_service` with a Home Assistant `notify.mobile_app_*` service to send compact actionable notifications that can appear on a Samsung Galaxy Watch or Wear OS watch through the Companion App.
+- **Diagnostics:** The panel includes a diagnostics section for checking version/cache state, available device counts, station availability, reply data, and watch notification setup.
 - **Reply-to-sender mode:** When a browser, phone, or tablet sends an intercom message, the casted reply view can send typed replies back to that original open browser session.
 - **Voice-command reply switches:** If a Google/Nest display does not pass touch events to the casted dashboard, expose the Intercom Reply switches to Google Assistant and reply by voice.
 - **Last reply status:** The `sensor.last_intercom_reply` entity shows whether a Google voice reply was delivered to an active sender or had no active sender context.
@@ -144,7 +162,10 @@ Stations make Family Intercom feel like a house/building intercom instead of a r
   {
     "name": "Kitchen",
     "targets": ["media_player.kitchen_display"],
-    "notify": "notify.mobile_app_marxcel"
+    "notify": "notify.mobile_app_marxcel",
+    "description": "Main kitchen display",
+    "icon": "Kitchen",
+    "color": "#22c55e"
   },
   {
     "name": "Office",
@@ -159,6 +180,13 @@ Stations make Family Intercom feel like a house/building intercom instead of a r
 
 The panel shows stations as first-class targets. If a station's target media player is unavailable, the station shows as offline (grayed out and disabled).
 
+Optional station fields:
+
+- `description`: small text shown under the station name.
+- `icon`: short emoji or label shown on the station card.
+- `color`: CSS color used as the station card accent.
+- `mode` or `type`: optional label for future station organization. `watch` stations use a watch icon by default.
+
 **The `notify` field is now used.** When you send a message to a station that has `notify` set, Family Intercom also pushes an actionable notification to that service at the same time as the audio announcement. That notification includes tappable quick-reply buttons built from your configured [reply phrases](#reply-phrases) (up to 3) - tapping one replies immediately, the same as if the recipient had used a voice command or the on-screen reply view. This is useful when the recipient has a phone: they can reply without walking up to the display at all. Stations with a notify service configured show a 🔔 badge on their chip in the panel.
 
 ## Reply phrases
@@ -172,6 +200,24 @@ Yes.|No.|Okay.|I am coming.|Give me five minutes.|Call me please.
 The first 3 of these are also used as the quick-reply buttons on actionable push notifications (see [Stations](#stations) above).
 
 These phrases appear in the panel quick replies and can also generate additional voice-friendly reply switch entities when Home Assistant reloads the integration.
+
+## Samsung Galaxy Watch / Wear OS
+
+The watch-friendly path is Home Assistant Companion App notifications, not the full browser panel. Configure **Watch notification service** in **Settings > Devices & services > Family Intercom > Configure** with a notify service such as:
+
+```text
+notify.mobile_app_marxcel
+```
+
+Then use **Watch** mode in the Family Intercom panel, or call:
+
+```yaml
+service: family_intercom.watch_prompt
+data:
+  message: "Can you come here?"
+```
+
+If your phone mirrors Home Assistant notifications to your Samsung Galaxy Watch, the watch can show the intercom prompt and the first three configured reply phrases as actionable buttons. Recording arbitrary watch voice audio directly into Home Assistant is not currently reliable through standard Home Assistant watch panels.
 
 ## Experimental reply view on Google/Nest displays
 
@@ -254,15 +300,15 @@ If your reply view URL is `/123-nice-st/family-intercom-reply`, then:
 Family Intercom normally registers its card resource automatically. If the display plays the message and then shows only a dark Cast screen, verify this resource exists in **Settings > Dashboards > Resources**:
 
 ```text
-/family_intercom_static/family-intercom-panel-v7.js?v=0.5.2
+/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
 ```
 
 Resource type must be **JavaScript module**. If your Home Assistant dashboards are managed in YAML mode, add the resource manually because integrations cannot update YAML dashboard resources automatically.
 
-For version 0.7.5 or newer, the module path is:
+For version 0.8.0 or newer, the module path is:
 
 ```text
-/family_intercom_static/family-intercom-panel-v14.js?v=0.7.5
+/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
 ```
 
 Manual service:
@@ -298,7 +344,7 @@ If you want Family Intercom inside an existing dashboard view:
 2. Add this JavaScript module if it was not added automatically:
 
 ```text
-/family_intercom_static/family-intercom-panel-v14.js?v=0.7.5
+/family_intercom_static/family-intercom-panel-v15.js?v=0.8.0
 ```
 
 3. Add a manual card to any dashboard:
@@ -329,3 +375,6 @@ cards:
 ## Notes
 
 Voice recordings are stored only as temporary files under Home Assistant's temporary directory and are deleted automatically after the configured cleanup delay.
+
+
+

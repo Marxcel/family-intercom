@@ -62,6 +62,9 @@ def parse_stations(value: str | None = None) -> list[dict[str, Any]]:
                 "targets": clean_targets,
                 "notify": str(item.get("notify", "")).strip(),
                 "description": str(item.get("description", "")).strip(),
+                "icon": str(item.get("icon", "")).strip(),
+                "color": str(item.get("color", "")).strip(),
+                "mode": str(item.get("mode") or item.get("type") or "").strip(),
             }
         )
     return stations[:50]

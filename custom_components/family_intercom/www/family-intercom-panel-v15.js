@@ -1,4 +1,4 @@
-class FamilyIntercomPanel extends HTMLElement {
+﻿class FamilyIntercomPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._rendered) this._render();
@@ -18,6 +18,7 @@ class FamilyIntercomPanel extends HTMLElement {
       this._replyUnsubscribe = null;
       this._replySubscribed = false;
     }
+    clearInterval(this._recordTimerInterval);
   }
 
   _render() {
@@ -27,6 +28,9 @@ class FamilyIntercomPanel extends HTMLElement {
     this._stations = [];
     this._replyPhrases = [];
     this._inboxReplies = [];
+    this._diagnostics = null;
+    this._activeSection = localStorage.getItem("familyIntercomSection") || "send";
+    this._sendMode = localStorage.getItem("familyIntercomSendMode") || "normal";
     this._selectedTargets = [];
     this._selectedStation = null;
     this._displayMode = this._replyMode || localStorage.getItem("familyIntercomDisplayMode") === "1";
@@ -39,6 +43,11 @@ class FamilyIntercomPanel extends HTMLElement {
         .hero:before{content:"";position:absolute;inset:-60px -80px auto auto;width:260px;height:260px;border-radius:999px;background:rgba(255,255,255,.18)}
         .hero:after{content:"";position:absolute;inset:auto auto -80px -50px;width:220px;height:220px;border-radius:999px;background:rgba(35,213,213,.18)}
         .hero-content{position:relative;z-index:1;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+        .section-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+        .section-tab{padding:13px 12px;border-radius:18px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-blue) 7%);color:var(--primary-text-color,#111);box-shadow:none;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 45%)}
+        .section-tab.active{background:linear-gradient(135deg,var(--fi-blue),var(--fi-purple));color:white}
+        .panel-section{display:none}
+        .panel-section.active{display:grid;gap:14px}
         .eyebrow{margin:0 0 6px;text-transform:uppercase;letter-spacing:.16em;font-size:.76rem;font-weight:900;opacity:.78}
         .hero-actions{display:grid;gap:10px;justify-items:end}
         .device-pill{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:999px;background:rgba(12,18,32,.34);backdrop-filter:blur(16px);font-weight:800;white-space:nowrap}
@@ -69,6 +78,11 @@ class FamilyIntercomPanel extends HTMLElement {
         .chips{display:flex;gap:9px;overflow:visible;padding:3px 0 6px;scrollbar-width:thin;flex-wrap:wrap;min-width:0}
         .chip{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:10px 12px;border-radius:999px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-blue) 10%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 35%);box-shadow:none;color:var(--primary-text-color,#111);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .chip.active{background:linear-gradient(135deg,var(--fi-blue),var(--fi-cyan));color:white}
+        .station-card{border-radius:18px;justify-content:flex-start;padding:13px 14px}
+        .station-card .station-icon{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.16)}
+        .station-card .station-copy{display:grid;gap:2px;text-align:left;min-width:0}
+        .station-card strong,.station-card small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .station-card small{font-size:.72rem;opacity:.78}
         .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         .message-actions{display:grid;grid-template-columns:1fr auto;gap:10px}
         .message-actions button{min-width:170px}
@@ -86,6 +100,12 @@ class FamilyIntercomPanel extends HTMLElement {
         .inline-form{display:grid;grid-template-columns:1fr auto;gap:8px}
         .history-item{padding:11px;border-radius:15px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-cyan) 5%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 55%)}
         .history-message{font-weight:900}.history-meta{font-size:.78rem;color:var(--secondary-text-color,#666);margin-top:3px}
+        .mode-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+        .mode-button{padding:12px;border-radius:16px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-purple) 7%);color:var(--primary-text-color,#111);box-shadow:none;border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 45%)}
+        .mode-button.active{background:linear-gradient(135deg,var(--fi-cyan),var(--fi-blue));color:white}
+        .diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+        .diag-tile{padding:14px;border-radius:18px;background:color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-purple) 7%);border:1px solid color-mix(in srgb,var(--divider-color,#ddd),transparent 50%)}
+        .diag-tile strong{display:block;font-size:1.5rem}.diag-tile span{font-size:.78rem;color:var(--secondary-text-color,#666);font-weight:800}
         .record-pad{display:grid;gap:12px;place-items:center;text-align:center;padding:18px;border-radius:24px;background:radial-gradient(circle at 50% 0,rgba(255,79,154,.22),transparent 45%),color-mix(in srgb,var(--ha-card-background,var(--card-background-color,#fff)),var(--fi-pink) 5%)}
         .record-circle{width:132px;height:132px;border-radius:999px;font-size:2.8rem;display:grid;place-items:center;background:linear-gradient(135deg,var(--fi-pink),var(--fi-orange));box-shadow:0 18px 38px rgba(255,79,154,.28);touch-action:none}
         .recording{animation:pulse 1s infinite;background:linear-gradient(135deg,#ef4444,#ff4f9a)!important}
@@ -128,6 +148,7 @@ class FamilyIntercomPanel extends HTMLElement {
           .target-row,.message-actions,.inline-form{grid-template-columns:1fr;display:grid}
           .target-row{gap:8px}
           .target-row button,.message-actions button,.inline-form button,.toolbar button{width:100%;min-width:0}
+          .section-tabs,.mode-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
           #presetChips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
           #stationChips,#favoriteChips,#targetChips{display:grid;grid-template-columns:1fr;gap:8px}
           .chip{width:100%;justify-content:center;padding:11px 10px;font-size:.93rem}
@@ -161,8 +182,14 @@ class FamilyIntercomPanel extends HTMLElement {
             </div>
           </div>
         </section>
+        <nav class="section-tabs" aria-label="Family Intercom sections">
+          <button class="section-tab active" data-scroll-to="sendPanel">Send</button>
+          <button class="section-tab" data-scroll-to="inboxList">Replies</button>
+          <button class="section-tab" data-scroll-to="deviceList">Devices</button>
+          <button class="section-tab" data-scroll-to="diagnosticsPanel">Diagnostics</button>
+        </nav>
         <div class="layout">
-          <main class="card soft">
+          <main class="card soft" id="sendPanel">
             <div class="section-head">
               <h2>Send to</h2>
               <span class="tiny" id="selectedCount">0 selected</span>
@@ -183,6 +210,8 @@ class FamilyIntercomPanel extends HTMLElement {
               <button id="displayMode" class="secondary">Display mode</button>
               <button id="emergency" class="emergency">Emergency broadcast</button>
             </div>
+            <div class="mini">Send mode</div>
+            <div class="mode-grid" id="modeButtons"></div>
             <div class="reply-banner" id="replyBanner">Loading reply target...</div>
             <div class="status" id="status">Select a speaker or display, then type or hold the microphone.</div>
             <div class="reply-help">This Google display is showing the reply screen, but touch input may be blocked by Home Assistant Cast. Use one of the voice commands below.</div>
@@ -207,9 +236,18 @@ class FamilyIntercomPanel extends HTMLElement {
             <div class="record-pad">
               <button id="record" class="record-circle" title="Tap to start recording, tap again to stop and send">Mic</button>
               <h2 id="recordTitle">Tap to record</h2>
+              <div class="tiny" id="recordTimer">00:00</div>
               <p class="mini">Tap Mic to start recording. Tap the big Stop button to stop and automatically send. Clips are temporary and deleted after playback.</p>
               <button id="stop" class="danger" disabled>Stop and send recording</button>
             </div>
+            <section class="card" id="diagnosticsPanel">
+              <div class="section-head">
+                <h2>Diagnostics</h2>
+                <button id="refreshDiagnostics" class="secondary">Refresh</button>
+              </div>
+              <div class="diag-grid" id="diagnosticsGrid"></div>
+              <p class="mini">Use this before opening an issue. It shows the integration version, visible devices, stations, replies, and watch setup status.</p>
+            </section>
           </main>
           <aside class="card">
             <div class="section-head">
@@ -254,8 +292,17 @@ class FamilyIntercomPanel extends HTMLElement {
     this.querySelector("#clearCustomQuick").addEventListener("click", () => this._clearCustomQuick());
     this.querySelector("#clearHistory").addEventListener("click", () => this._clearHistory());
     this.querySelector("#refreshInbox").addEventListener("click", () => this._loadInbox());
+    this.querySelector("#refreshDiagnostics")?.addEventListener("click", () => this._loadDiagnostics());
+    this.querySelectorAll("[data-scroll-to]").forEach(button => {
+      button.addEventListener("click", () => {
+        this.querySelectorAll("[data-scroll-to]").forEach(tab => tab.classList.toggle("active", tab === button));
+        this.querySelector(`#${button.dataset.scrollTo}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
     const record = this.querySelector("#record");
     record.addEventListener("click", () => this._toggleRecording());
+    this._renderModeButtons();
+    this._renderDiagnostics();
     this._renderQuickMessages();
     this._renderHistory();
     this._renderInbox();
@@ -298,6 +345,7 @@ class FamilyIntercomPanel extends HTMLElement {
       this._renderStationChips(this._players());
       this._renderQuickMessages();
       await this._loadInbox();
+      await this._loadDiagnostics();
     } catch (error) {
       this._status(`Could not load intercom config: ${error.message || error}`);
     }
@@ -310,6 +358,41 @@ class FamilyIntercomPanel extends HTMLElement {
       this._renderInbox();
     } catch {
       // Keep the panel usable if the inbox endpoint is unavailable.
+    }
+  }
+
+  async _loadDiagnostics() {
+    try {
+      this._diagnostics = await this._fetchJson("/api/family_intercom/diagnostics");
+      this._renderDiagnostics();
+      this._status("Diagnostics refreshed.", true);
+    } catch (error) {
+      this._status(`Could not load diagnostics: ${error.message || error}`);
+    }
+  }
+
+  _renderDiagnostics() {
+    const container = this.querySelector("#diagnosticsGrid");
+    if (!container) return;
+    const diag = this._diagnostics;
+    container.replaceChildren();
+    const tiles = diag
+      ? [
+          ["Version", diag.version || "unknown"],
+          ["Panel", diag.frontend_module || "unknown"],
+          ["Visible devices", diag.media_players_visible ?? 0],
+          ["Hidden devices", diag.media_players_hidden ?? 0],
+          ["Stations online", `${diag.stations_online ?? 0}/${diag.stations_total ?? 0}`],
+          ["Reply sessions", diag.reply_sessions ?? 0],
+          ["Reply history", diag.reply_history ?? 0],
+          ["Watch notify", diag.watch_notify_configured ? "configured" : "not set"],
+        ]
+      : [["Diagnostics", "Press Refresh"]];
+    for (const [label, value] of tiles) {
+      const tile = document.createElement("div");
+      tile.className = "diag-tile";
+      tile.innerHTML = `<strong>${this._escape(value)}</strong><span>${this._escape(label)}</span>`;
+      container.append(tile);
     }
   }
 
@@ -501,13 +584,21 @@ class FamilyIntercomPanel extends HTMLElement {
     for (const station of this._stations) {
       const targets = (station.targets || []).filter(target => available.has(target));
       const button = document.createElement("button");
-      button.className = `chip${this._sameTargets(this._selectedTargets, targets) ? " active" : ""}`;
+      button.className = `chip station-card${this._sameTargets(this._selectedTargets, targets) ? " active" : ""}`;
+      if (station.color) button.style.borderColor = station.color;
       button.title = station.notify
         ? `${station.name}: replies can also be sent as a quick-reply push notification`
         : station.name;
-      button.innerHTML = `${this._escape(station.name)}${targets.length ? "" : " (offline)"}${
-        station.notify ? ' <span class="notify-badge" aria-label="Push quick-reply enabled">🔔</span>' : ""
-      }`;
+      const icon = station.icon || (station.mode === "watch" ? "⌚" : "🏠");
+      const count = targets.length || station.targets?.length || 0;
+      const description = station.description || `${count} target${count === 1 ? "" : "s"}`;
+      button.innerHTML = `
+        <span class="station-icon">${this._escape(icon)}</span>
+        <span class="station-copy">
+          <strong>${this._escape(station.name)}${targets.length ? "" : " (offline)"}${station.notify ? ' <span class="notify-badge" aria-label="Push quick-reply enabled">🔔</span>' : ""}</strong>
+          <small>${this._escape(description)}</small>
+        </span>
+      `;
       button.disabled = !targets.length;
       button.addEventListener("click", () => {
         this._selectedTargets = targets;
@@ -648,6 +739,37 @@ class FamilyIntercomPanel extends HTMLElement {
         quickBox.append(button);
       }
     }
+  }
+
+  _renderModeButtons() {
+    const container = this.querySelector("#modeButtons");
+    if (!container) return;
+    const modes = [
+      ["normal", "Normal"],
+      ["quiet", "Quiet"],
+      ["watch", "Watch"],
+      ["emergency", "Emergency"],
+    ];
+    container.replaceChildren();
+    for (const [mode, label] of modes) {
+      const button = document.createElement("button");
+      button.className = `mode-button${this._sendMode === mode ? " active" : ""}`;
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        this._sendMode = mode;
+        localStorage.setItem("familyIntercomSendMode", mode);
+        this._renderModeButtons();
+        this._status(this._modeHelp(mode));
+      });
+      container.append(button);
+    }
+  }
+
+  _modeHelp(mode) {
+    if (mode === "quiet") return "Quiet mode selected. The message sends normally but will respect configured quiet hours.";
+    if (mode === "watch") return "Watch mode selected. Typed messages send as a compact Home Assistant notification to your configured watch service.";
+    if (mode === "emergency") return "Emergency mode selected. Use Emergency broadcast for the protected all-device alert.";
+    return "Normal intercom mode selected.";
   }
 
   _renderHistory() {
@@ -898,6 +1020,15 @@ class FamilyIntercomPanel extends HTMLElement {
       this._status(`Reply sent to ${this._replyContext.sender_name || "original sender"}.`, true);
       return;
     }
+    if (this._sendMode === "watch" && !emergency) {
+      await this._hass.callService("family_intercom", "watch_prompt", {
+        message,
+        session_id: this._sessionId(),
+      });
+      this._addHistory("Watch", [], message, false);
+      this._status("Watch notification sent.", true);
+      return;
+    }
     if (!targets.length) return this._status("Select a target first.");
     const recipientNotify = !emergency && this._selectedStation?.notify;
     await this._hass.callService("family_intercom", "speak_text", {
@@ -916,7 +1047,7 @@ class FamilyIntercomPanel extends HTMLElement {
     const textarea = this.querySelector("#message");
     const message = textarea.value.trim();
     if (!message) return this._status("Type a message first.");
-    await this._speak(message);
+    await this._speak(message, this._sendMode === "emergency");
     textarea.value = "";
   }
 
@@ -964,6 +1095,7 @@ class FamilyIntercomPanel extends HTMLElement {
       this.querySelector("#record").textContent = "Stop";
       this.querySelector("#recordTitle").textContent = "Recording...";
       this.querySelector("#stop").disabled = false;
+      this._startRecordTimer();
       this._status("Recording. Tap the big Stop button to send.");
     } catch (error) {
       this._status(`Microphone unavailable: ${error.message || error}`);
@@ -976,6 +1108,29 @@ class FamilyIntercomPanel extends HTMLElement {
     this.querySelector("#record").textContent = "Mic";
     this.querySelector("#recordTitle").textContent = "Tap to record";
     this.querySelector("#stop").disabled = true;
+    this._stopRecordTimer();
+  }
+
+  _startRecordTimer() {
+    this._recordStartedAt = Date.now();
+    this._updateRecordTimer();
+    clearInterval(this._recordTimerInterval);
+    this._recordTimerInterval = setInterval(() => this._updateRecordTimer(), 500);
+  }
+
+  _stopRecordTimer() {
+    clearInterval(this._recordTimerInterval);
+    this._recordTimerInterval = null;
+    const timer = this.querySelector("#recordTimer");
+    if (timer) timer.textContent = "00:00";
+  }
+
+  _updateRecordTimer() {
+    const timer = this.querySelector("#recordTimer");
+    if (!timer || !this._recordStartedAt) return;
+    const seconds = Math.max(0, Math.floor((Date.now() - this._recordStartedAt) / 1000));
+    const minutes = Math.floor(seconds / 60);
+    timer.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   }
 
   async _sendRecording() {
@@ -1001,11 +1156,12 @@ class FamilyIntercomPanel extends HTMLElement {
       data,
       content_type: blob.type || "audio/webm",
       filename: blob.type?.includes("mp4") ? "intercom.m4a" : "intercom.webm",
+      emergency: this._sendMode === "emergency",
       sender_session_id: this._sessionId(),
       sender_name: this._senderName(),
       ...(this._selectedStation?.notify ? { recipient_notify: this._selectedStation.notify } : {}),
     });
-    this._addHistory("Voice", targets, "Voice recording");
+    this._addHistory("Voice", targets, "Voice recording", this._sendMode === "emergency");
     this._status(`Voice message sent to ${this._targetLabel(targets)}.`, true);
   }
 

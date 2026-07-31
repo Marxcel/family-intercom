@@ -128,6 +128,29 @@ show_reply_view:
       selector:
         text:
 
+watch_prompt:
+  name: Send watch prompt
+  description: Send a compact Family Intercom notification to a phone/watch notify service. On Galaxy Watch, this works through the Home Assistant Companion App notification/action pipeline.
+  fields:
+    message:
+      name: Message
+      required: false
+      selector:
+        text:
+          multiline: true
+    session_id:
+      name: Sender session ID
+      description: Optional active intercom session ID. When provided, quick-reply buttons route back to that original sender.
+      required: false
+      selector:
+        text:
+    notify_service:
+      name: Notify service
+      description: Optional notify.* service. If omitted, the configured watch notification service is used.
+      required: false
+      selector:
+        text:
+
 reply_text:
   name: Reply with text
   description: Send a typed reply back to the browser or device session that started the intercom message.

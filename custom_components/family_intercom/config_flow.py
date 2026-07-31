@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_TTS_ENTITY,
     DEFAULT_VOLUME_ENABLED,
     DEFAULT_VOLUME_LEVEL,
+    DEFAULT_WATCH_NOTIFY_SERVICE,
     DOMAIN,
 )
 from .helpers import parse_stations
@@ -160,6 +161,10 @@ def _options_schema(current):
             vol.Optional(
                 "reply_notify_service",
                 default=current.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE),
+            ): selector.TextSelector(),
+            vol.Optional(
+                "watch_notify_service",
+                default=current.get("watch_notify_service", DEFAULT_WATCH_NOTIFY_SERVICE),
             ): selector.TextSelector(),
             vol.Optional(
                 "reply_phrases", default=current.get("reply_phrases", DEFAULT_REPLY_PHRASES)

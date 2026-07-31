@@ -42,6 +42,7 @@ from .const import (
     DEFAULT_TTS_ENTITY,
     DEFAULT_VOLUME_ENABLED,
     DEFAULT_VOLUME_LEVEL,
+    DEFAULT_WATCH_NOTIFY_SERVICE,
     DOMAIN,
     FRONTEND_MODULE,
     INTEGRATION_VERSION,
@@ -55,6 +56,7 @@ from .helpers import parse_reply_phrases
 from .media import (
     FamilyIntercomChimeView,
     FamilyIntercomConfigView,
+    FamilyIntercomDiagnosticsView,
     FamilyIntercomInboxView,
     FamilyIntercomMediaView,
     FamilyIntercomReplyContextView,
@@ -71,6 +73,7 @@ SERVICE_REPLY_RECORDING = "reply_recording"
 SERVICE_REPLY_TEXT = "reply_text"
 SERVICE_DELETE_TEMP = "delete_temp_files"
 SERVICE_SHOW_REPLY_VIEW = "show_reply_view"
+SERVICE_WATCH_PROMPT = "watch_prompt"
 
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}_reply_data"
@@ -128,6 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.http.register_view(FamilyIntercomReplyContextView())
     hass.http.register_view(FamilyIntercomConfigView())
     hass.http.register_view(FamilyIntercomInboxView())
+    hass.http.register_view(FamilyIntercomDiagnosticsView())
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     entry.async_on_unload(_register_services(hass, entry))
     options = _entry_options(entry)
@@ -220,6 +224,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _fire_history(hass, "text", targets, message, emergency)
         _store_reply_context(hass, call, targets, "text", message)
         await _maybe_push_actionable_reply(hass, options, call, message)
+        await _maybe_push_watch_copy(hass, options, message, call.data.get("sender_session_id"))
         await _maybe_show_reply_view(hass, options, targets, message)
 
     async def play_recording(call: ServiceCall) -> None:
@@ -259,6 +264,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         _fire_history(hass, "recording", targets, "Voice recording", emergency)
         _store_reply_context(hass, call, targets, "recording", "Voice recording")
         await _maybe_push_actionable_reply(hass, options, call, "Sent you a voice message.")
+        await _maybe_push_watch_copy(hass, options, "Voice intercom message sent.", call.data.get("sender_session_id"))
         _schedule_delete(hass, recording_id, cleanup_seconds)
         await _maybe_show_reply_view(hass, options, targets, "Voice recording")
 
@@ -314,6 +320,23 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             call.data.get("view_path") or options["reply_view_path"],
             call.data.get("message", "Reply to intercom"),
         )
+
+    async def watch_prompt(call: ServiceCall) -> None:
+        message = str(call.data.get("message") or "Family Intercom is ready.").strip()
+        session_id = str(call.data.get("session_id") or "").strip()
+        notify_service = str(call.data.get("notify_service") or options.get("watch_notify_service") or "").strip()
+        if not notify_service:
+            raise vol.Invalid("Configure a watch notify service or pass notify_service.")
+        if session_id:
+            _store_reply_context_values(
+                hass,
+                session_id=session_id,
+                sender_name="Watch mode sender",
+                targets=["watch"],
+                kind="watch",
+                message=message,
+            )
+        await _push_watch_notification(hass, options, notify_service, message, session_id or None)
 
     hass.services.async_register(
         DOMAIN,
@@ -388,6 +411,18 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
             }
         ),
     )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_WATCH_PROMPT,
+        watch_prompt,
+        schema=vol.Schema(
+            {
+                vol.Optional("message"): cv.string,
+                vol.Optional("session_id"): cv.string,
+                vol.Optional("notify_service"): cv.string,
+            }
+        ),
+    )
 
     async def handle_notification_action(event) -> None:
         """Handle a tap on an actionable quick-reply push notification button."""
@@ -428,6 +463,7 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry):
         hass.services.async_remove(DOMAIN, SERVICE_REPLY_RECORDING)
         hass.services.async_remove(DOMAIN, SERVICE_DELETE_TEMP)
         hass.services.async_remove(DOMAIN, SERVICE_SHOW_REPLY_VIEW)
+        hass.services.async_remove(DOMAIN, SERVICE_WATCH_PROMPT)
         remove_notification_listener()
 
     return unregister
@@ -473,9 +509,29 @@ def _store_reply_context(
     session_id = call.data.get("sender_session_id")
     if not session_id:
         return
+    _store_reply_context_values(
+        hass,
+        session_id=session_id,
+        sender_name=call.data.get("sender_name", "Original sender"),
+        targets=targets,
+        kind=kind,
+        message=message,
+    )
+
+
+def _store_reply_context_values(
+    hass: HomeAssistant,
+    *,
+    session_id: str,
+    sender_name: str,
+    targets: list[str],
+    kind: str,
+    message: str,
+) -> None:
+    """Store reply context from plain values."""
     context = {
         "session_id": session_id,
-        "sender_name": call.data.get("sender_name", "Original sender"),
+        "sender_name": sender_name,
         "targets": targets,
         "kind": kind,
         "message": message[:240],
@@ -530,6 +586,7 @@ def _entry_options(entry: ConfigEntry) -> dict[str, Any]:
         "reply_view_path": values.get("reply_view_path", DEFAULT_REPLY_VIEW_PATH),
         "reply_cast_delay_seconds": int(values.get("reply_cast_delay_seconds", DEFAULT_REPLY_CAST_DELAY_SECONDS)),
         "reply_notify_service": values.get("reply_notify_service", DEFAULT_REPLY_NOTIFY_SERVICE),
+        "watch_notify_service": values.get("watch_notify_service", DEFAULT_WATCH_NOTIFY_SERVICE),
         "reply_phrases": values.get("reply_phrases", DEFAULT_REPLY_PHRASES),
         "stations_json": values.get("stations_json", DEFAULT_STATIONS_JSON),
     }
@@ -693,6 +750,61 @@ async def _maybe_push_actionable_reply(
             "title": "Family Intercom",
             "message": message[:240],
             "data": {"actions": actions},
+        },
+        blocking=False,
+    )
+
+
+async def _maybe_push_watch_copy(
+    hass: HomeAssistant, options: dict[str, Any], message: str, session_id: str | None
+) -> None:
+    """Optionally mirror intercom activity to a watch/mobile notify target.
+
+    Wear OS/Galaxy Watch support in Home Assistant works best through the
+    Companion App notification pipeline: watches can receive actionable
+    notifications and trigger HA actions, but they cannot run the full browser
+    recorder panel reliably.
+    """
+    notify_service = str(options.get("watch_notify_service", "")).strip()
+    if not notify_service:
+        return
+    try:
+        await _push_watch_notification(hass, options, notify_service, message, session_id)
+    except vol.Invalid:
+        _LOGGER.debug("Configured watch notify service is unavailable", exc_info=True)
+
+
+async def _push_watch_notification(
+    hass: HomeAssistant,
+    options: dict[str, Any],
+    notify_service: str,
+    message: str,
+    session_id: str | None = None,
+) -> None:
+    """Send a compact actionable notification suitable for phone/watch surfaces."""
+    if "." in notify_service:
+        domain, service = notify_service.split(".", 1)
+    else:
+        domain, service = "notify", notify_service
+    if domain != "notify" or not service or not hass.services.has_service(domain, service):
+        raise vol.Invalid(f"Notify service not found: {notify_service}")
+    phrases = parse_reply_phrases(options.get("reply_phrases"))[:NOTIFICATION_ACTION_MAX_BUTTONS]
+    actions = []
+    if session_id and phrases:
+        session = _data(hass).get("reply_sessions", {}).get(session_id)
+        if session is not None:
+            session["reply_phrases_snapshot"] = phrases
+        actions = [
+            {"action": f"{NOTIFICATION_ACTION_PREFIX}::{session_id}::{index}", "title": phrase}
+            for index, phrase in enumerate(phrases)
+        ]
+    await hass.services.async_call(
+        domain,
+        service,
+        {
+            "title": "Family Intercom",
+            "message": message[:240],
+            "data": {"actions": actions} if actions else {},
         },
         blocking=False,
     )
