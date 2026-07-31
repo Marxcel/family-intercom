@@ -205,9 +205,9 @@ class FamilyIntercomPanel extends HTMLElement {
               </div>
             </div>
             <div class="record-pad">
-              <button id="record" class="record-circle" title="Hold to record voice">Mic</button>
-              <h2 id="recordTitle">Hold to talk</h2>
-              <p class="mini">Hold the mic and release to send. Or tap once, then tap Stop. Clips are temporary and deleted after playback.</p>
+              <button id="record" class="record-circle" title="Tap to start recording, tap again to stop and send">Mic</button>
+              <h2 id="recordTitle">Tap to record</h2>
+              <p class="mini">Tap Mic to start recording. Tap the big Stop button to stop and automatically send. Clips are temporary and deleted after playback.</p>
               <button id="stop" class="danger" disabled>Stop and send recording</button>
             </div>
           </main>
@@ -255,11 +255,7 @@ class FamilyIntercomPanel extends HTMLElement {
     this.querySelector("#clearHistory").addEventListener("click", () => this._clearHistory());
     this.querySelector("#refreshInbox").addEventListener("click", () => this._loadInbox());
     const record = this.querySelector("#record");
-    record.addEventListener("click", () => this._startRecording());
-    record.addEventListener("pointerdown", event => this._startHoldRecording(event));
-    record.addEventListener("pointerup", () => this._stopHoldRecording());
-    record.addEventListener("pointercancel", () => this._stopHoldRecording());
-    record.addEventListener("pointerleave", () => this._stopHoldRecording());
+    record.addEventListener("click", () => this._toggleRecording());
     this._renderQuickMessages();
     this._renderHistory();
     this._renderInbox();
@@ -937,18 +933,12 @@ class FamilyIntercomPanel extends HTMLElement {
     await this._speak("Emergency. I need help please.", true, targets);
   }
 
-  async _startHoldRecording(event) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    this._holding = true;
-    this._holdStarted = Date.now();
+  async _toggleRecording() {
+    if (this._recorder?.state === "recording") {
+      this._stopRecording();
+      return;
+    }
     await this._startRecording();
-  }
-
-  _stopHoldRecording() {
-    if (!this._holding) return;
-    this._holding = false;
-    if (Date.now() - (this._holdStarted || 0) < 500) return;
-    this._stopRecording();
   }
 
   async _startRecording() {
@@ -974,7 +964,7 @@ class FamilyIntercomPanel extends HTMLElement {
       this.querySelector("#record").textContent = "Stop";
       this.querySelector("#recordTitle").textContent = "Recording...";
       this.querySelector("#stop").disabled = false;
-      this._status("Recording. Release the mic or tap Stop to send.");
+      this._status("Recording. Tap the big Stop button to send.");
     } catch (error) {
       this._status(`Microphone unavailable: ${error.message || error}`);
     }
@@ -984,7 +974,7 @@ class FamilyIntercomPanel extends HTMLElement {
     if (this._recorder?.state === "recording") this._recorder.stop();
     this.querySelector("#record").classList.remove("recording");
     this.querySelector("#record").textContent = "Mic";
-    this.querySelector("#recordTitle").textContent = "Hold to talk";
+    this.querySelector("#recordTitle").textContent = "Tap to record";
     this.querySelector("#stop").disabled = true;
   }
 
